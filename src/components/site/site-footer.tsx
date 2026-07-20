@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import {
+  GithubLogo,
   InstagramLogo,
   LinkedinLogo,
   WhatsappLogo,
@@ -13,6 +14,8 @@ const { footer, contactInfo, contact } = siteConfig
 const whatsappHref = resolveWhatsAppHref(contactInfo.whatsappNumber)
 const emailConfirmed = contactInfo.email !== KNOWN_PLACEHOLDERS.email
 const emailHref = emailConfirmed ? `mailto:${contactInfo.email}` : '#contato'
+// Never render the placeholder CNPJ on the live site — show it only once real.
+const cnpjConfirmed = contactInfo.cnpj !== KNOWN_PLACEHOLDERS.cnpj
 
 function FooterHeading({ children }: { children: ReactNode }) {
   return (
@@ -129,7 +132,32 @@ export function SiteFooter() {
 
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 pt-6.5 text-[13px] text-white/50">
           <span>{footer.copyright}</span>
-          <span>CNPJ {contactInfo.cnpj}</span>
+          {cnpjConfirmed && <span>CNPJ {contactInfo.cnpj}</span>}
+        </div>
+
+        {/* Developer credit — deliberately quiet: author + open-source repo. */}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[12px] text-white/35">
+          <span>Desenvolvido por</span>
+          <a
+            href="https://github.com/sum117"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="font-medium text-white/60 transition duration-200 hover:text-sand focus-visible:text-sand focus-visible:outline-hidden"
+          >
+            sum117
+          </a>
+          <span aria-hidden="true" className="text-white/25">
+            ·
+          </span>
+          <a
+            href="https://github.com/sum117/weyne-website"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="inline-flex items-center gap-1 text-white/60 transition duration-200 hover:text-sand focus-visible:text-sand focus-visible:outline-hidden"
+          >
+            <GithubLogo size={13} weight="fill" aria-hidden="true" />
+            código-fonte
+          </a>
         </div>
       </div>
     </footer>
