@@ -24,7 +24,9 @@ ARG VITE_WHATSAPP_NUMBER=""
 ENV VITE_SITE_ORIGIN=$VITE_SITE_ORIGIN
 ENV VITE_WHATSAPP_NUMBER=$VITE_WHATSAPP_NUMBER
 COPY . .
-RUN bun run build
+# Build the prerendered client only. The content/quality gate (which uses tsx,
+# a Node tool absent from this Bun-only image) runs in CI on the same commit.
+RUN bun run build:app
 
 # ── Runtime stage ────────────────────────────────────────────────────────
 FROM caddy:2-alpine AS runtime

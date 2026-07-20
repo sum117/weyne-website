@@ -19,6 +19,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "bun run check:content && vite build",
+    "build:app": "vite build",
     "preview": "vite preview",
     "serve:static": "bun scripts/serve-dist.ts 3000",
     "typecheck": "tsc --noEmit",
