@@ -3,7 +3,7 @@
 .git
 .github
 node_modules
-dist
+dist/server
 .output
 .nitro
 .tanstack
