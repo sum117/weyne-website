@@ -1,0 +1,42 @@
+# dependencies
+node_modules
+
+# build output
+.output
+.nitro
+.tanstack
+dist
+.vite
+
+# generated route tree
+# (committed is fine too, but it is regenerated on build)
+
+# test / tooling output
+coverage
+playwright-report
+test-results
+blob-report
+tests/e2e/__screenshots__
+
+# env
+.env
+.env.local
+.env.*.local
+# production secrets (live only on the VPS)
+.env.weyne
+deploy/.env.weyne
+
+# logs
+*.log
+npm-debug.log*
+bun-debug.log*
+
+# editor / OS
+.DS_Store
+.idea
+.vscode/*
+!.vscode/extensions.json
+Thumbs.db
+
+# local agent/tooling config (personal)
+.claude/

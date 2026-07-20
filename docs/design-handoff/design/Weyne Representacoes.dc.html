@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400;1,6..72,500&family=Jost:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/light/style.css">
+<style>
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth;scroll-padding-top:96px;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  body{margin:0;background:#012C4B}
+  a{color:#034F83;text-decoration:none}
+  a:hover{color:#069CFF}
+  img{display:block;max-width:100%}
+  p{text-wrap:pretty}
+  ::selection{background:#EECAA0;color:#012C4B}
+  input,textarea,button{font-family:inherit}
+  input:focus,textarea:focus{outline:none;border-color:#069CFF!important;box-shadow:0 0 0 4px rgba(6,156,255,.12)!important}
+  @keyframes wy-up{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:none}}
+  @keyframes wy-fade{from{opacity:0}to{opacity:1}}
+  @keyframes wy-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-14px)}}
+  @keyframes wy-floats{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}
+  @keyframes wy-spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important}}
+  @keyframes wy-pulse{0%{transform:scale(1);opacity:.5}70%{transform:scale(1.85);opacity:0}100%{opacity:0}}
+  @media (max-width:900px){
+    html{scrollbar-width:none}
+    html::-webkit-scrollbar{width:0;height:0;display:none}
+  }
+</style>
+</helmet>
+<div id="wy" data-screen-label="Landing — Weyne Representações" style="font-family:'Jost',system-ui,sans-serif;color:#12314C;background:#F6F3EC;overflow-x:hidden;--navy:#012C4B;--blue:#034F83;--baltic:#069CFF;--sand:#EECAA0;--paper:#F6F3EC;--ink:#12314C;--muted:#5C7286;--line:rgba(3,79,131,.13);--accent:#EECAA0;">
+
+  <header data-nav style="position:fixed;top:0;left:0;right:0;z-index:60;--navlink:rgba(255,255,255,.92);border-bottom:1px solid rgba(255,255,255,0);transition:background .45s,box-shadow .45s,border-color .45s;">
+    <nav style="max-width:1320px;margin:0 auto;padding:16px clamp(18px,5vw,48px);display:flex;align-items:center;justify-content:space-between;gap:20px;">
+      <a href="#topo" aria-label="Weyne Representações" style="display:flex;align-items:center;gap:12px;flex:none;text-decoration:none;">
+        <span style="position:relative;width:40px;height:40px;flex:none;display:block;">
+          <img data-logo-white src="assets/monogram-white.png" alt="Weyne Representações" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;transition:opacity .4s;">
+          <img data-logo-blue src="assets/monogram-blue.png" alt="" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity .4s;">
+        </span>
+        <span style="display:flex;flex-direction:column;line-height:1;">
+          <span data-wordmark style="font-family:'Newsreader',serif;font-weight:500;font-size:31px;line-height:.9;letter-spacing:.005em;color:#fff;transition:color .4s;">weyne</span>
+          <span data-wordmark-sub style="font:600 8.5px/1 'Jost';letter-spacing:.34em;text-transform:uppercase;color:rgba(255,255,255,.72);margin-top:4px;transition:color .4s;">Representações</span>
+        </span>
+      </a>
+      <div data-desktop-nav style="display:flex;align-items:center;gap:clamp(20px,2.4vw,36px);">
+        <a href="#sobre" style="font:500 15px/1 'Jost';color:var(--navlink);letter-spacing:.01em;opacity:.92;transition:color .4s,opacity .25s;" style-hover="opacity:1">Sobre</a>
+        <a href="#diferenciais" style="font:500 15px/1 'Jost';color:var(--navlink);letter-spacing:.01em;opacity:.92;transition:color .4s,opacity .25s;" style-hover="opacity:1">Diferenciais</a>
+        <a href="#marcas" style="font:500 15px/1 'Jost';color:var(--navlink);letter-spacing:.01em;opacity:.92;transition:color .4s,opacity .25s;" style-hover="opacity:1">Marcas</a>
+        <a href="#segmentos" style="font:500 15px/1 'Jost';color:var(--navlink);letter-spacing:.01em;opacity:.92;transition:color .4s,opacity .25s;" style-hover="opacity:1">Segmentos</a>
+        <a href="#contato" style="display:inline-flex;align-items:center;gap:9px;padding:11px 20px;border-radius:999px;background:var(--blue);color:#fff;font:600 14px/1 'Jost';border:0;cursor:pointer;transition:.32s;box-shadow:0 12px 26px -14px rgba(3,79,131,.75);" style-hover="background:var(--baltic);transform:translateY(-1px);box-shadow:0 16px 30px -14px rgba(6,156,255,.6)"><i class="ph-light ph-whatsapp-logo" style="font-size:18px;"></i>Fale com um consultor</a>
+      </div>
+      <button data-burger aria-label="Menu" style="display:none;align-items:center;justify-content:center;width:46px;height:46px;border-radius:13px;background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.28);cursor:pointer;transition:.3s;"><i class="ph-light ph-list" style="font-size:24px;"></i></button>
+    </nav>
+    <div data-mobile data-open="0" style="position:absolute;top:100%;left:12px;right:12px;background:#fff;border:1px solid var(--line);border-radius:20px;padding:14px;box-shadow:0 40px 70px -34px rgba(1,20,36,.5);display:flex;flex-direction:column;gap:2px;opacity:0;transform:translateY(-12px);pointer-events:none;transition:.35s;">
+      <a href="#sobre" style="padding:14px 16px;border-radius:12px;color:var(--ink);font:500 16px 'Jost';" style-hover="background:var(--paper)">Sobre</a>
+      <a href="#diferenciais" style="padding:14px 16px;border-radius:12px;color:var(--ink);font:500 16px 'Jost';" style-hover="background:var(--paper)">Diferenciais</a>
+      <a href="#marcas" style="padding:14px 16px;border-radius:12px;color:var(--ink);font:500 16px 'Jost';" style-hover="background:var(--paper)">Marcas</a>
+      <a href="#segmentos" style="padding:14px 16px;border-radius:12px;color:var(--ink);font:500 16px 'Jost';" style-hover="background:var(--paper)">Segmentos</a>
+      <a href="#contato" style="margin-top:6px;display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:15px 20px;border-radius:12px;background:var(--blue);color:#fff;font:600 15px 'Jost';"><i class="ph-light ph-whatsapp-logo" style="font-size:19px;"></i>Fale com um consultor</a>
+    </div>
+  </header>
+
+  <!-- ============ HERO ============ -->
+  <section id="topo" data-hero style="position:relative;background:radial-gradient(125% 120% at 82% 4%, #0a5c98 0%, #034F83 40%, #012C4B 100%);color:#fff;overflow:hidden;">
+    <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"><path d="M-80,560 C280,680 520,380 820,490 S1320,580 1620,450" fill="none" stroke="rgba(255,255,255,.09)" stroke-width="1.3"></path><path d="M-80,648 C300,768 560,468 860,566 S1360,626 1660,496" fill="none" stroke="rgba(238,202,160,.14)" stroke-width="1.3"></path></svg>
+    <div aria-hidden="true" style="position:absolute;width:60vw;height:60vw;max-width:900px;max-height:900px;right:-14vw;top:-16vw;border:1.5px solid rgba(255,255,255,.06);border-radius:50%;"></div>
+    <div aria-hidden="true" style="position:absolute;width:44vw;height:44vw;max-width:680px;max-height:680px;left:-12vw;bottom:-18vw;border:1.5px solid rgba(255,255,255,.05);border-radius:50%;"></div>
+    <div style="position:relative;max-width:1320px;margin:0 auto;padding:clamp(122px,14vw,180px) clamp(18px,5vw,48px) clamp(52px,6vw,88px);display:flex;flex-wrap:wrap;align-items:center;gap:clamp(18px,2.6vw,44px);">
+      <div style="flex:1 1 400px;min-width:290px;">
+        <div style="display:inline-flex;align-items:center;gap:13px;animation:wy-up .8s .05s both;">
+          <span style="width:30px;height:2px;background:var(--sand);display:inline-block;"></span>
+          <span style="font:600 12.5px/1 'Jost';letter-spacing:.24em;text-transform:uppercase;color:rgba(255,255,255,.82);">Representação comercial · Higiene profissional</span>
+        </div>
+        <h1 style="font-family:'Newsreader',serif;font-optical-sizing:auto;font-weight:400;font-size:clamp(38px,5.6vw,72px);line-height:1.02;letter-spacing:-.018em;margin:.34em 0 0;max-width:15ch;">Relacionamento, conhecimento e soluções que <em style="font-style:italic;color:var(--sand);font-weight:400;">geram resultados</em>.</h1>
+        <p style="margin:clamp(20px,2.4vw,30px) 0 0;font-size:clamp(16.5px,1.25vw,19px);line-height:1.72;color:rgba(255,255,255,.8);max-width:52ch;animation:wy-up .8s .16s both;">Conectamos empresas às melhores marcas em higiene e limpeza profissional, com um atendimento consultivo, próximo e comprometido com resultados — em Pernambuco, Alagoas, Paraíba e Rio Grande do Norte.</p>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:16px 22px;margin-top:clamp(28px,3.2vw,40px);animation:wy-up .8s .26s both;">
+          <a href="#contato" style="display:inline-flex;align-items:center;gap:12px;padding:17px 28px;background:#fff;color:var(--navy);border-radius:999px;font:600 15.5px/1 'Jost';border:0;cursor:pointer;transition:.34s;box-shadow:0 20px 40px -18px rgba(0,0,0,.5);" style-hover="background:var(--sand);transform:translateY(-2px);box-shadow:0 26px 48px -18px rgba(238,202,160,.5)"><i class="ph-light ph-whatsapp-logo" style="font-size:20px;"></i>Fale com um consultor</a>
+          <a href="#marcas" style="display:inline-flex;align-items:center;gap:11px;color:#fff;font:600 15.5px/1 'Jost';padding:6px 2px;transition:.3s;" style-hover="gap:16px;color:var(--sand)">Conheça as marcas <i class="ph-light ph-arrow-right" style="font-size:19px;"></i></a>
+        </div>
+      </div>
+      <div data-herofig style="position:relative;flex:1 1 350px;min-width:290px;min-height:clamp(500px,80vh,780px);display:flex;justify-content:center;animation:wy-fade 1.1s .2s both;">
+        <img data-par="24" src="assets/outline-white.png" alt="" aria-hidden="true" style="position:absolute;width:134%;max-width:none;top:-4%;left:-17%;opacity:.08;pointer-events:none;">
+        <div data-par="10" aria-hidden="true" style="position:absolute;width:74%;aspect-ratio:1;left:13%;top:6%;background:radial-gradient(circle at 50% 46%, rgba(255,255,255,.16), rgba(255,255,255,0) 62%);pointer-events:none;"></div>
+        <img src="assets/carolina-desk.png" alt="Carolina Weyne, fundadora da Weyne Representações" style="position:absolute;bottom:-1%;left:50%;transform:translateX(-50%);width:min(112%,660px);height:auto;z-index:2;pointer-events:none;">
+        <div data-herobadge style="position:absolute;z-index:3;left:-2%;bottom:34%;display:flex;align-items:center;gap:13px;background:rgba(255,255,255,.97);padding:12px 20px 12px 15px;border-radius:17px;box-shadow:0 26px 46px -22px rgba(1,18,32,.6);animation:wy-floats 7.5s ease-in-out infinite .5s;">
+          <img src="assets/monogram-blue.png" alt="" aria-hidden="true" style="width:28px;height:28px;object-fit:contain;">
+          <div>
+            <div style="font:600 10px/1.2 'Jost';letter-spacing:.16em;text-transform:uppercase;color:var(--muted);">Atende</div>
+            <div style="font:600 14.5px/1.2 'Jost';color:var(--navy);margin-top:3px;">PE · AL · PB · RN</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div aria-hidden="true" style="position:absolute;left:0;right:0;bottom:0;height:110px;background:linear-gradient(180deg,rgba(246,243,236,0),#F6F3EC);"></div>
+  </section>
+
+  <!-- ============ STATS ============ -->
+  <div data-statwrap style="position:relative;z-index:5;max-width:1200px;margin:-72px auto 0;padding:0 clamp(18px,5vw,48px);">
+    <div data-reveal data-statgrid style="opacity:0;transform:translateY(28px);transition:opacity .9s cubic-bezier(.16,.8,.24,1),transform .9s cubic-bezier(.16,.8,.24,1);background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:0 40px 80px -46px rgba(3,79,131,.4);display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));overflow:hidden;">
+      <div style="padding:34px clamp(20px,3vw,40px);border-right:1px solid var(--line);text-align:center;">
+        <div style="display:flex;align-items:baseline;justify-content:center;gap:4px;font-family:'Newsreader',serif;font-weight:400;color:var(--blue);line-height:1;"><span data-count="28" style="font-size:clamp(44px,4.6vw,60px);">28</span></div>
+        <div style="margin-top:12px;font:500 14.5px/1.45 'Jost';color:var(--muted);">anos de experiência<br>na área comercial</div>
+      </div>
+      <div style="padding:34px clamp(20px,3vw,40px);border-right:1px solid var(--line);text-align:center;">
+        <div style="display:flex;align-items:baseline;justify-content:center;gap:2px;font-family:'Newsreader',serif;font-weight:400;color:var(--blue);line-height:1;"><span style="font-size:clamp(44px,4.6vw,60px);">+</span><span data-count="17" style="font-size:clamp(44px,4.6vw,60px);">17</span></div>
+        <div style="margin-top:12px;font:500 14.5px/1.45 'Jost';color:var(--muted);">anos em higiene e<br>limpeza profissional</div>
+      </div>
+      <div style="padding:34px clamp(20px,3vw,40px);border-right:1px solid var(--line);text-align:center;">
+        <div style="display:flex;align-items:baseline;justify-content:center;gap:4px;font-family:'Newsreader',serif;font-weight:400;color:var(--blue);line-height:1;"><span data-count="4" style="font-size:clamp(44px,4.6vw,60px);">4</span></div>
+        <div style="margin-top:12px;font:500 14.5px/1.45 'Jost';color:var(--muted);">estados atendidos<br>no Nordeste</div>
+      </div>
+      <div style="padding:34px clamp(20px,3vw,40px);text-align:center;">
+        <div style="display:flex;align-items:baseline;justify-content:center;gap:4px;font-family:'Newsreader',serif;font-weight:400;color:var(--blue);line-height:1;"><span data-count="8" style="font-size:clamp(44px,4.6vw,60px);">8</span></div>
+        <div style="margin-top:12px;font:500 14.5px/1.45 'Jost';color:var(--muted);">marcas industriais<br>representadas</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ SOBRE / PALAVRA DE QUEM REPRESENTA ============ -->
+  <section id="sobre" style="padding:clamp(88px,11vw,150px) 0 clamp(72px,9vw,120px);">
+    <div style="max-width:1200px;margin:0 auto;padding:0 clamp(18px,5vw,48px);display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:clamp(40px,6vw,88px);align-items:center;">
+      <div data-reveal style="opacity:0;transform:translateY(28px);transition:opacity .9s cubic-bezier(.16,.8,.24,1),transform .9s cubic-bezier(.16,.8,.24,1);">
+        <div style="display:inline-flex;align-items:center;gap:12px;">
+          <span style="width:26px;height:2px;background:var(--accent);display:inline-block;"></span>
+          <span style="font:600 12.5px/1 'Jost';letter-spacing:.2em;text-transform:uppercase;color:var(--blue);">Sobre a Weyne</span>
+        </div>
+        <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(30px,3.9vw,50px);line-height:1.08;letter-spacing:-.015em;color:var(--navy);margin:.34em 0 0;">Nascemos para conectar empresas às melhores soluções em higiene profissional.</h2>
+        <p style="margin:26px 0 0;font-size:clamp(16px,1.15vw,18px);line-height:1.78;color:var(--muted);max-width:52ch;">A Weyne Representações nasceu com o propósito de aproximar empresas das marcas mais confiáveis do mercado, por meio de um atendimento consultivo, próximo e comprometido com resultados.</p>
+        <blockquote style="margin:34px 0 0;padding:6px 0 6px 26px;border-left:3px solid var(--accent);">
+          <p style="margin:0;font-family:'Newsreader',serif;font-style:italic;font-weight:400;font-size:clamp(19px,1.7vw,24px);line-height:1.5;color:var(--navy);max-width:40ch;">Cada parceria é construída com seriedade, transparência e excelência — porque resultados consistentes começam com relacionamentos de confiança.</p>
+        </blockquote>
+      </div>
+      <div data-reveal style="opacity:0;transform:translateY(28px);transition:opacity 1s cubic-bezier(.16,.8,.24,1) .1s,transform 1s cubic-bezier(.16,.8,.24,1) .1s;position:relative;background:#fff;border:1px solid var(--line);border-radius:26px;padding:clamp(30px,3.6vw,50px);box-shadow:0 46px 90px -50px rgba(3,79,131,.42);overflow:hidden;">
+        <img src="assets/monogram-sand.png" alt="" aria-hidden="true" style="position:absolute;width:180px;top:-30px;right:-30px;opacity:.5;pointer-events:none;">
+        <div style="position:relative;font:600 11.5px/1 'Jost';letter-spacing:.2em;text-transform:uppercase;color:var(--blue);">Palavra de quem representa</div>
+        <div style="position:relative;margin-top:22px;display:flex;flex-direction:column;gap:17px;font-size:clamp(15px,1.08vw,16.5px);line-height:1.75;color:#3a5064;">
+          <p style="margin:0;">Com <strong style="color:var(--navy);font-weight:600;">28 anos de experiência</strong> na área comercial e mais de <strong style="color:var(--navy);font-weight:600;">17 anos</strong> no segmento de higiene e limpeza profissional, construí uma trajetória baseada em confiança, relacionamento e conhecimento técnico.</p>
+          <p style="margin:0;">Represento marcas reconhecidas pela qualidade e inovação, sempre buscando soluções que agreguem valor aos negócios dos meus clientes. Atuo em Pernambuco, Alagoas, Paraíba e Rio Grande do Norte, atendendo distribuidores, indústrias, supermercados e empresas de diversos segmentos.</p>
+          <p style="margin:0;">Mais do que representar grandes marcas, meu compromisso é compreender cada necessidade e indicar a solução mais adequada para cada realidade — com suporte antes, durante e depois da venda.</p>
+        </div>
+        <div style="position:relative;margin-top:28px;padding-top:24px;border-top:1px solid var(--line);display:flex;align-items:center;gap:15px;">
+          <div style="width:50px;height:50px;border-radius:50%;background:var(--paper);border:1px solid var(--line);display:grid;place-items:center;flex:none;"><img src="assets/monogram-blue.png" alt="" style="width:26px;height:26px;object-fit:contain;"></div>
+          <div>
+            <div style="font-family:'Newsreader',serif;font-size:21px;color:var(--navy);line-height:1;">Carolina Weyne</div>
+            <div style="margin-top:5px;font:500 12.5px/1 'Jost';letter-spacing:.03em;color:var(--muted);">Fundadora · Weyne Representações</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DIFERENCIAIS ============ -->
+  <section id="diferenciais" style="position:relative;background:#fff;padding:clamp(84px,11vw,140px) 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);">
+    <div style="max-width:1200px;margin:0 auto;padding:0 clamp(18px,5vw,48px);">
+      <div data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .9s cubic-bezier(.16,.8,.24,1),transform .9s cubic-bezier(.16,.8,.24,1);max-width:760px;">
+        <div style="display:inline-flex;align-items:center;gap:12px;">
+          <span style="width:26px;height:2px;background:var(--accent);display:inline-block;"></span>
+          <span style="font:600 12.5px/1 'Jost';letter-spacing:.2em;text-transform:uppercase;color:var(--blue);">Diferenciais</span>
+        </div>
+        <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(30px,4.1vw,52px);line-height:1.06;letter-spacing:-.015em;color:var(--navy);margin:.32em 0 0;">Por que escolher a Weyne Representações?</h2>
+        <p style="margin:22px 0 0;font-size:clamp(16px,1.15vw,18px);line-height:1.72;color:var(--muted);max-width:56ch;">Mais do que fornecer produtos, entregamos atendimento consultivo, relacionamento de confiança e soluções que geram resultados para o seu negócio.</p>
+      </div>
+      <div style="margin-top:clamp(40px,5vw,64px);display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:clamp(16px,1.6vw,22px);">
+
+        <article data-card data-reveal style="opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.16,.8,.24,1),transform .5s cubic-bezier(.16,.8,.24,1),box-shadow .5s,border-color .5s;position:relative;background:#fff;border:1px solid var(--line);border-radius:22px;padding:clamp(28px,2.6vw,36px);overflow:hidden;">
+          <span data-num style="position:absolute;top:22px;right:26px;font-family:'Newsreader',serif;font-size:34px;color:rgba(3,79,131,.18);transition:color .5s;">01</span>
+          <div data-icon style="width:60px;height:60px;border-radius:16px;background:rgba(3,79,131,.07);color:var(--blue);display:grid;place-items:center;transition:.45s;"><i class="ph-light ph-chats-circle" style="font-size:31px;"></i></div>
+          <h3 style="margin:24px 0 0;font:600 20px/1.25 'Jost';color:var(--navy);">Atendimento consultivo</h3>
+          <p style="margin:11px 0 0;font-size:15px;line-height:1.66;color:var(--muted);">Entendemos a realidade de cada cliente para indicar as soluções mais adequadas ao seu contexto.</p>
+        </article>
+
+        <article data-card data-reveal style="opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.16,.8,.24,1) .06s,transform .5s cubic-bezier(.16,.8,.24,1),box-shadow .5s,border-color .5s;position:relative;background:#fff;border:1px solid var(--line);border-radius:22px;padding:clamp(28px,2.6vw,36px);overflow:hidden;">
+          <span data-num style="position:absolute;top:22px;right:26px;font-family:'Newsreader',serif;font-size:34px;color:rgba(3,79,131,.18);transition:color .5s;">02</span>
+          <div data-icon style="width:60px;height:60px;border-radius:16px;background:rgba(3,79,131,.07);color:var(--blue);display:grid;place-items:center;transition:.45s;"><i class="ph-light ph-handshake" style="font-size:31px;"></i></div>
+          <h3 style="margin:24px 0 0;font:600 20px/1.25 'Jost';color:var(--navy);">Relacionamento próximo</h3>
+          <p style="margin:11px 0 0;font-size:15px;line-height:1.66;color:var(--muted);">Parcerias duradouras, construídas sobre confiança, transparência e disponibilidade real.</p>
+        </article>
+
+        <article data-card data-reveal style="opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.16,.8,.24,1) .12s,transform .5s cubic-bezier(.16,.8,.24,1),box-shadow .5s,border-color .5s;position:relative;background:#fff;border:1px solid var(--line);border-radius:22px;padding:clamp(28px,2.6vw,36px);overflow:hidden;">
+          <span data-num style="position:absolute;top:22px;right:26px;font-family:'Newsreader',serif;font-size:34px;color:rgba(3,79,131,.18);transition:color .5s;">03</span>
+          <div data-icon style="width:60px;height:60px;border-radius:16px;background:rgba(3,79,131,.07);color:var(--blue);display:grid;place-items:center;transition:.45s;"><i class="ph-light ph-graduation-cap" style="font-size:31px;"></i></div>
+          <h3 style="margin:24px 0 0;font:600 20px/1.25 'Jost';color:var(--navy);">Conhecimento técnico</h3>
+          <p style="margin:11px 0 0;font-size:15px;line-height:1.66;color:var(--muted);">Experiência e atualização constante para orientações seguras, precisas e eficientes.</p>
+        </article>
+
+        <article data-card data-reveal style="opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.16,.8,.24,1),transform .5s cubic-bezier(.16,.8,.24,1),box-shadow .5s,border-color .5s;position:relative;background:#fff;border:1px solid var(--line);border-radius:22px;padding:clamp(28px,2.6vw,36px);overflow:hidden;">
+          <span data-num style="position:absolute;top:22px;right:26px;font-family:'Newsreader',serif;font-size:34px;color:rgba(3,79,131,.18);transition:color .5s;">04</span>
+          <div data-icon style="width:60px;height:60px;border-radius:16px;background:rgba(3,79,131,.07);color:var(--blue);display:grid;place-items:center;transition:.45s;"><i class="ph-light ph-seal-check" style="font-size:31px;"></i></div>
+          <h3 style="margin:24px 0 0;font:600 20px/1.25 'Jost';color:var(--navy);">Marcas reconhecidas</h3>
+          <p style="margin:11px 0 0;font-size:15px;line-height:1.66;color:var(--muted);">Representamos empresas consolidadas, referência em qualidade, inovação e desempenho.</p>
+        </article>
+
+        <article data-card data-reveal style="opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.16,.8,.24,1) .06s,transform .5s cubic-bezier(.16,.8,.24,1),box-shadow .5s,border-color .5s;position:relative;background:#fff;border:1px solid var(--line);border-radius:22px;padding:clamp(28px,2.6vw,36px);overflow:hidden;">
+          <span data-num style="position:absolute;top:22px;right:26px;font-family:'Newsreader',serif;font-size:34px;color:rgba(3,79,131,.18);transition:color .5s;">05</span>
+          <div data-icon style="width:60px;height:60px;border-radius:16px;background:rgba(3,79,131,.07);color:var(--blue);display:grid;place-items:center;transition:.45s;"><i class="ph-light ph-lightning" style="font-size:31px;"></i></div>
+          <h3 style="margin:24px 0 0;font:600 20px/1.25 'Jost';color:var(--navy);">Agilidade no atendimento</h3>
+          <p style="margin:11px 0 0;font-size:15px;line-height:1.66;color:var(--muted);">Respostas rápidas, acompanhamento contínuo e foco na melhor experiência do cliente.</p>
+        </article>
+
+        <article data-card data-reveal style="opacity:0;transform:translateY(26px);transition:opacity .8s cubic-bezier(.16,.8,.24,1) .12s,transform .5s cubic-bezier(.16,.8,.24,1),box-shadow .5s,border-color .5s;position:relative;background:#fff;border:1px solid var(--line);border-radius:22px;padding:clamp(28px,2.6vw,36px);overflow:hidden;">
+          <span data-num style="position:absolute;top:22px;right:26px;font-family:'Newsreader',serif;font-size:34px;color:rgba(3,79,131,.18);transition:color .5s;">06</span>
+          <div data-icon style="width:60px;height:60px;border-radius:16px;background:rgba(3,79,131,.07);color:var(--blue);display:grid;place-items:center;transition:.45s;"><i class="ph-light ph-chart-line-up" style="font-size:31px;"></i></div>
+          <h3 style="margin:24px 0 0;font:600 20px/1.25 'Jost';color:var(--navy);">Compromisso com resultados</h3>
+          <p style="margin:11px 0 0;font-size:15px;line-height:1.66;color:var(--muted);">Geramos valor para o seu negócio, contribuindo para mais eficiência e produtividade.</p>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ MARCAS ============ -->
+  <section id="marcas" style="padding:clamp(84px,11vw,150px) 0;">
+    <div style="max-width:1200px;margin:0 auto;padding:0 clamp(18px,5vw,48px);">
+      <div data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .9s cubic-bezier(.16,.8,.24,1),transform .9s cubic-bezier(.16,.8,.24,1);display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px clamp(30px,5vw,70px);align-items:end;">
+        <div>
+          <div style="display:inline-flex;align-items:center;gap:12px;">
+            <span style="width:26px;height:2px;background:var(--accent);display:inline-block;"></span>
+            <span style="font:600 12.5px/1 'Jost';letter-spacing:.2em;text-transform:uppercase;color:var(--blue);">Marcas representadas</span>
+          </div>
+          <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(30px,4.1vw,52px);line-height:1.06;letter-spacing:-.015em;color:var(--navy);margin:.32em 0 0;">Marcas que representamos com confiança</h2>
+        </div>
+        <p style="margin:0;font-size:clamp(15.5px,1.1vw,17px);line-height:1.72;color:var(--muted);max-width:48ch;">Atuamos em parceria com indústrias reconhecidas pela qualidade, inovação e compromisso com seus clientes. Cada marca compartilha os valores que norteiam nosso trabalho — excelência, confiabilidade e foco em resultados. <span data-hoverhint style="color:var(--blue);font-weight:500;">Passe o cursor para conhecer cada uma.</span></p>
+      </div>
+
+      <div style="margin-top:clamp(38px,4.6vw,58px);display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:clamp(14px,1.4vw,20px);">
+
+        <article data-brand data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.16,.8,.24,1),transform .5s cubic-bezier(.16,.8,.24,1),box-shadow .5s,border-color .5s;position:relative;background:#fff;border:1px solid var(--line);border-radius:20px;min-height:210px;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="flex:1;display:grid;place-items:center;padding:36px 28px 14px;"><img data-brandlogo src="assets/brands/total-clean.png" alt="Total Clean" style="max-height:70px;max-width:74%;width:auto;object-fit:contain;transition:filter .5s,opacity .5s;"></div>
+          <div style="padding:0 24px 20px;font:600 11px/1 'Jost';letter-spacing:.15em;text-transform:uppercase;color:var(--muted);">Saneantes</div>
+          <div data-brand-desc style="position:absolute;inset:0;background:linear-gradient(165deg,#034F83,#012C4B);color:#fff;padding:28px 26px;display:flex;flex-direction:column;justify-content:flex-end;opacity:0;transform:translateY(14px);transition:opacity .45s,transform .45s;pointer-events:none;">
+            <span style="font:600 11px/1 'Jost';letter-spacing:.16em;text-transform:uppercase;color:var(--sand);margin-bottom:11px;">Total Clean</span>
+            <p style="margin:0;font-size:14px;line-height:1.6;color:rgba(255,255,255,.9);">Indústria química de saneantes biodegradáveis e sustentáveis para os mercados institucional e doméstico.</p>
+          </div>
+        </article>
+
+        <article data-brand data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.16,.8,.24,1) .05s,transform .5s cubic-bezier(.16,.8,.24,1),box-shadow .5s,border-color .5s;position:relative;background:#fff;border:1px solid var(--line);border-radius:20px;min-height:210px;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="flex:1;display:grid;place-items:center;padding:34px 28px 14px;"><img data-brandlogo src="assets/brands/life-clean.png" alt="Life Clean" style="max-height:84px;max-width:60%;width:auto;object-fit:contain;transition:filter .5s,opacity .5s;"></div>
+          <div style="padding:0 24px 20px;font:600 11px/1 'Jost';letter-spacing:.15em;text-transform:uppercase;color:var(--muted);">Descartáveis</div>
+          <div data-brand-desc style="position:absolute;inset:0;background:linear-gradient(165deg,#034F83,#012C4B);color:#fff;padding:28px 26px;display:flex;flex-direction:column;justify-content:flex-end;opacity:0;transform:translateY(14px);transition:opacity .45s,transform .45s;pointer-events:none;">
+            <span style="font:600 11px/1 'Jost';letter-spacing:.16em;text-transform:uppercase;color:var(--sand);margin-bottom:11px;">Life Clean</span>
+            <p style="margin:0;font-size:14px;line-height:1.6;color:rgba(255,255,255,.9);">Panos multiuso, embalagens e descartáveis para cozinha — papel alumínio, bandejas, filme PVC e panos de limpeza.</p>
+          </div>
+        </article>
+
+        <article data-brand data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.16,.8,.24,1) .1s,transform .5s cubic-bezier(.16,.8,.24,1),box-shadow .5s,border-color .5s;position:relative;background:#fff;border:1px solid var(--line);border-radius:20px;min-height:210px;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="flex:1;display:grid;place-items:center;padding:36px 28px 14px;"><img data-brandlogo src="assets/brands/british.png" alt="British" style="max-height:52px;max-width:74%;width:auto;object-fit:contain;transition:filter .5s,opacity .5s;"></div>
+          <div style="padding:0 24px 20px;font:600 11px/1 'Jost';letter-spacing:.15em;text-transform:uppercase;color:var(--muted);">Abrasivos</div>
+          <div data-brand-desc style="position:absolute;inset:0;background:linear-gradient(165deg,#034F83,#012C4B);color:#fff;padding:28px 26px;display:flex;flex-direction:column;justify-content:flex-end;opacity:0;transform:translateY(14px);transition:opacity .45s,transform .45s;pointer-events:none;">
+            <span style="font:600 11px/1 'Jost';letter-spacing:.16em;text-transform:uppercase;color:var(--sand);margin-bottom:11px;">British</span>
+            <p style="margin:0;font-size:14px;line-height:1.6;color:rgba(255,255,255,.9);">Maior fabricante de não tecido abrasivo do Brasil: fibras, esponjas e discos, exportando para mais de 25 países.</p>
+          </div>
+        </article>
+
+        <article data-brand data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.16,.8,.24,1) .15s,transform .5s cubic-bezier(.16,.8,.24,1),box-shadow .5s,border-color .5s;position:relative;background:#fff;border:1px solid var(--line);border-radius:20px;min-height:210px;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="flex:1;display:grid;place-items:center;padding:36px 28px 14px;"><img data-brandlogo src="assets/brands/plestin.png" alt="Plestin" style="max-height:60px;max-width:72%;width:auto;object-fit:contain;transition:filter .5s,opacity .5s;"></div>
+          <div style="padding:0 24px 20px;font:600 11px/1 'Jost';letter-spacing:.15em;text-transform:uppercase;color:var(--muted);">Dispensadores</div>
+          <div data-brand-desc style="position:absolute;inset:0;background:linear-gradient(165deg,#034F83,#012C4B);color:#fff;padding:28px 26px;display:flex;flex-direction:column;justify-content:flex-end;opacity:0;transform:translateY(14px);transition:opacity .45s,transform .45s;pointer-events:none;">
+            <span style="font:600 11px/1 'Jost';letter-spacing:.16em;text-transform:uppercase;color:var(--sand);margin-bottom:11px;">Plestin</span>
+            <p style="margin:0;font-size:14px;line-height:1.6;color:rgba(255,255,255,.9);">Dispensadores para higiene profissional — saboneteiras, toalheiros e papeleiras — com linha própria de químicos e refis.</p>
+          </div>
+        </article>
+
+        <article data-brand data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.16,.8,.24,1),transform .5s cubic-bezier(.16,.8,.24,1),box-shadow .5s,border-color .5s;position:relative;background:#fff;border:1px solid var(--line);border-radius:20px;min-height:210px;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="flex:1;display:grid;place-items:center;padding:36px 28px 14px;"><img data-brandlogo src="assets/brands/century-pro.png" alt="Century Pro" style="max-height:56px;max-width:70%;width:auto;object-fit:contain;transition:filter .5s,opacity .5s;"></div>
+          <div style="padding:0 24px 20px;display:flex;align-items:center;gap:8px;"><span style="font:600 11px/1 'Jost';letter-spacing:.15em;text-transform:uppercase;color:var(--muted);">Equipamentos</span><span style="font:500 10px/1 'Jost';letter-spacing:.04em;color:var(--blue);background:rgba(3,79,131,.08);padding:4px 8px;border-radius:6px;">marca Plestin</span></div>
+          <div data-brand-desc style="position:absolute;inset:0;background:linear-gradient(165deg,#034F83,#012C4B);color:#fff;padding:28px 26px;display:flex;flex-direction:column;justify-content:flex-end;opacity:0;transform:translateY(14px);transition:opacity .45s,transform .45s;pointer-events:none;">
+            <span style="font:600 11px/1 'Jost';letter-spacing:.16em;text-transform:uppercase;color:var(--sand);margin-bottom:11px;">Century Pro</span>
+            <p style="margin:0;font-size:14px;line-height:1.6;color:rgba(255,255,255,.9);">Equipamentos e acessórios para limpeza profissional: mops, baldes espremedores, carros de limpeza e microfibra.</p>
+          </div>
+        </article>
+
+        <article data-brand data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.16,.8,.24,1) .05s,transform .5s cubic-bezier(.16,.8,.24,1),box-shadow .5s,border-color .5s;position:relative;background:#fff;border:1px solid var(--line);border-radius:20px;min-height:210px;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="flex:1;display:grid;place-items:center;padding:36px 28px 14px;"><img data-brandlogo src="assets/brands/century-paper.png" alt="Century Paper" style="max-height:72px;max-width:74%;width:auto;object-fit:contain;transition:filter .5s,opacity .5s;"></div>
+          <div style="padding:0 24px 20px;display:flex;align-items:center;gap:8px;"><span style="font:600 11px/1 'Jost';letter-spacing:.15em;text-transform:uppercase;color:var(--muted);">Papéis</span><span style="font:500 10px/1 'Jost';letter-spacing:.04em;color:var(--blue);background:rgba(3,79,131,.08);padding:4px 8px;border-radius:6px;">marca Plestin</span></div>
+          <div data-brand-desc style="position:absolute;inset:0;background:linear-gradient(165deg,#034F83,#012C4B);color:#fff;padding:28px 26px;display:flex;flex-direction:column;justify-content:flex-end;opacity:0;transform:translateY(14px);transition:opacity .45s,transform .45s;pointer-events:none;">
+            <span style="font:600 11px/1 'Jost';letter-spacing:.16em;text-transform:uppercase;color:var(--sand);margin-bottom:11px;">Century Paper</span>
+            <p style="margin:0;font-size:14px;line-height:1.6;color:rgba(255,255,255,.9);">Papéis institucionais sustentáveis de alta performance — linhas Econômica, Tradicional e Premium.</p>
+          </div>
+        </article>
+
+        <article data-brand data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.16,.8,.24,1) .1s,transform .5s cubic-bezier(.16,.8,.24,1),box-shadow .5s,border-color .5s;position:relative;background:#fff;border:1px solid var(--line);border-radius:20px;min-height:210px;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="flex:1;display:grid;place-items:center;padding:34px 28px 14px;"><img data-brandlogo src="assets/brands/kelldrin.png" alt="Grupo Kelldrin" style="max-height:58px;max-width:80%;width:auto;object-fit:contain;transition:filter .5s,opacity .5s;"></div>
+          <div style="padding:0 24px 20px;font:600 11px/1 'Jost';letter-spacing:.15em;text-transform:uppercase;color:var(--muted);">Controle de pragas</div>
+          <div data-brand-desc style="position:absolute;inset:0;background:linear-gradient(165deg,#034F83,#012C4B);color:#fff;padding:28px 26px;display:flex;flex-direction:column;justify-content:flex-end;opacity:0;transform:translateY(14px);transition:opacity .45s,transform .45s;pointer-events:none;">
+            <span style="font:600 11px/1 'Jost';letter-spacing:.16em;text-transform:uppercase;color:var(--sand);margin-bottom:11px;">Grupo Kelldrin</span>
+            <p style="margin:0;font-size:14px;line-height:1.6;color:rgba(255,255,255,.9);">Soluções em higiene, limpeza e controle de pragas urbanas há mais de 20 anos — saúde animal, ambiental e humana.</p>
+          </div>
+        </article>
+
+        <article data-brand data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .8s cubic-bezier(.16,.8,.24,1) .15s,transform .5s cubic-bezier(.16,.8,.24,1),box-shadow .5s,border-color .5s;position:relative;background:#fff;border:1px solid var(--line);border-radius:20px;min-height:210px;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="flex:1;display:grid;place-items:center;padding:34px 28px 14px;"><img data-brandlogo src="assets/brands/bello-bella.png" alt="Bello Bella Cosméticos" style="max-height:62px;max-width:82%;width:auto;object-fit:contain;transition:filter .5s,opacity .5s;"></div>
+          <div style="padding:0 24px 20px;font:600 11px/1 'Jost';letter-spacing:.15em;text-transform:uppercase;color:var(--muted);">Antissépticos</div>
+          <div data-brand-desc style="position:absolute;inset:0;background:linear-gradient(165deg,#034F83,#012C4B);color:#fff;padding:28px 26px;display:flex;flex-direction:column;justify-content:flex-end;opacity:0;transform:translateY(14px);transition:opacity .45s,transform .45s;pointer-events:none;">
+            <span style="font:600 11px/1 'Jost';letter-spacing:.16em;text-transform:uppercase;color:var(--sand);margin-bottom:11px;">Bello Bella Cosméticos</span>
+            <p style="margin:0;font-size:14px;line-height:1.6;color:rgba(255,255,255,.9);">Álcool antisséptico para mãos e superfícies — líquido e gel 46%, 70%, 80% e 92,8%, eliminando 99,9% de germes.</p>
+          </div>
+        </article>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SEGMENTOS ============ -->
+  <section id="segmentos" style="position:relative;background:linear-gradient(155deg,#034F83 0%,#012C4B 100%);color:#fff;padding:clamp(84px,11vw,140px) 0;overflow:hidden;">
+    <svg viewBox="0 0 1440 110" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;top:-1px;left:0;width:100%;height:clamp(46px,6vw,92px);display:block;z-index:1;pointer-events:none;"><path d="M0,0 H1440 V44 C1180,104 900,8 720,46 C540,84 260,102 0,54 Z" fill="#F6F3EC"></path></svg>
+    <svg viewBox="0 0 1440 110" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;bottom:-1px;left:0;width:100%;height:clamp(46px,6vw,92px);display:block;z-index:1;pointer-events:none;"><path d="M0,110 H1440 V66 C1180,6 900,102 720,64 C540,26 260,8 0,56 Z" fill="#F6F3EC"></path></svg>
+    <svg viewBox="0 0 1440 520" preserveAspectRatio="xMidYMid slice" aria-hidden="true" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;"><path d="M-60,160 C300,350 560,30 880,210 S1420,310 1680,160" fill="none" stroke="rgba(255,255,255,.11)" stroke-width="1.4"></path><path d="M-60,262 C320,452 600,132 920,312 S1460,412 1720,262" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="1.4"></path></svg>
+    <img src="assets/monogram-white.png" alt="" aria-hidden="true" style="position:absolute;width:min(46vw,520px);right:-6%;bottom:-14%;opacity:.05;pointer-events:none;">
+    <div style="position:relative;z-index:2;max-width:1200px;margin:0 auto;padding:0 clamp(18px,5vw,48px);">
+      <div data-reveal style="opacity:0;transform:translateY(24px);transition:opacity .9s cubic-bezier(.16,.8,.24,1),transform .9s cubic-bezier(.16,.8,.24,1);max-width:720px;">
+        <div style="display:inline-flex;align-items:center;gap:12px;">
+          <span style="width:26px;height:2px;background:var(--sand);display:inline-block;"></span>
+          <span style="font:600 12.5px/1 'Jost';letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.82);">Segmentos</span>
+        </div>
+        <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(29px,3.9vw,50px);line-height:1.08;letter-spacing:-.015em;color:#fff;margin:.32em 0 0;">Atuação por meio de distribuidores parceiros</h2>
+        <p style="margin:22px 0 0;font-size:clamp(16px,1.15vw,18px);line-height:1.72;color:rgba(255,255,255,.78);max-width:60ch;">Atuamos ao lado de distribuidores, conectando marcas reconhecidas a empresas de diversos segmentos. Nosso compromisso é fortalecer os parceiros comerciais com soluções de qualidade e suporte contínuo.</p>
+      </div>
+      <div style="margin-top:14px;font:600 12px/1 'Jost';letter-spacing:.16em;text-transform:uppercase;color:var(--sand);padding-top:clamp(30px,4vw,48px);">As soluções representadas estão presentes em</div>
+      <div style="margin-top:22px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;">
+        <div data-reveal style="opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.16,.8,.24,1),transform .7s cubic-bezier(.16,.8,.24,1);display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:30px 16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:18px;transition:background .4s,transform .4s;" style-hover="background:rgba(255,255,255,.1);transform:translateY(-4px)"><i class="ph-light ph-first-aid-kit" style="font-size:34px;color:var(--sand);"></i><span style="font:500 14.5px/1 'Jost';">Hospitais</span></div>
+        <div data-reveal style="opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.16,.8,.24,1) .04s,transform .7s cubic-bezier(.16,.8,.24,1) .04s;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:30px 16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:18px;transition:background .4s,transform .4s;" style-hover="background:rgba(255,255,255,.1);transform:translateY(-4px)"><i class="ph-light ph-bed" style="font-size:34px;color:var(--sand);"></i><span style="font:500 14.5px/1 'Jost';">Hotéis</span></div>
+        <div data-reveal style="opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.16,.8,.24,1) .08s,transform .7s cubic-bezier(.16,.8,.24,1) .08s;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:30px 16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:18px;transition:background .4s,transform .4s;" style-hover="background:rgba(255,255,255,.1);transform:translateY(-4px)"><i class="ph-light ph-factory" style="font-size:34px;color:var(--sand);"></i><span style="font:500 14.5px/1 'Jost';">Indústrias</span></div>
+        <div data-reveal style="opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.16,.8,.24,1) .12s,transform .7s cubic-bezier(.16,.8,.24,1) .12s;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:30px 16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:18px;transition:background .4s,transform .4s;" style-hover="background:rgba(255,255,255,.1);transform:translateY(-4px)"><i class="ph-light ph-washing-machine" style="font-size:34px;color:var(--sand);"></i><span style="font:500 14.5px/1 'Jost';">Lavanderias</span></div>
+        <div data-reveal style="opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.16,.8,.24,1) .16s,transform .7s cubic-bezier(.16,.8,.24,1) .16s;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:30px 16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:18px;transition:background .4s,transform .4s;" style-hover="background:rgba(255,255,255,.1);transform:translateY(-4px)"><i class="ph-light ph-shopping-cart" style="font-size:34px;color:var(--sand);"></i><span style="font:500 14.5px/1 'Jost';">Supermercados</span></div>
+        <div data-reveal style="opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.16,.8,.24,1) .2s,transform .7s cubic-bezier(.16,.8,.24,1) .2s;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:30px 16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:18px;transition:background .4s,transform .4s;" style-hover="background:rgba(255,255,255,.1);transform:translateY(-4px)"><i class="ph-light ph-fork-knife" style="font-size:34px;color:var(--sand);"></i><span style="font:500 14.5px/1 'Jost';">Food service</span></div>
+        <div data-reveal style="opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.16,.8,.24,1) .24s,transform .7s cubic-bezier(.16,.8,.24,1) .24s;display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;padding:30px 16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:18px;transition:background .4s,transform .4s;" style-hover="background:rgba(255,255,255,.1);transform:translateY(-4px)"><i class="ph-light ph-buildings" style="font-size:34px;color:var(--sand);"></i><span style="font:500 14.5px/1 'Jost';">Empresas e instituições</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTATO ============ -->
+  <section id="contato" style="padding:clamp(84px,11vw,150px) 0;">
+    <div style="max-width:1200px;margin:0 auto;padding:0 clamp(18px,5vw,48px);display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:clamp(36px,5vw,72px);align-items:start;">
+      <div data-reveal style="opacity:0;transform:translateY(26px);transition:opacity .9s cubic-bezier(.16,.8,.24,1),transform .9s cubic-bezier(.16,.8,.24,1);">
+        <div style="display:inline-flex;align-items:center;gap:12px;">
+          <span style="width:26px;height:2px;background:var(--accent);display:inline-block;"></span>
+          <span style="font:600 12.5px/1 'Jost';letter-spacing:.2em;text-transform:uppercase;color:var(--blue);">Contato</span>
+        </div>
+        <h2 style="font-family:'Newsreader',serif;font-weight:400;font-size:clamp(30px,4.1vw,52px);line-height:1.05;letter-spacing:-.015em;color:var(--navy);margin:.3em 0 0;max-width:16ch;">Pronto para encontrar as melhores soluções?</h2>
+        <p style="margin:22px 0 0;font-size:clamp(16px,1.15vw,18px);line-height:1.72;color:var(--muted);max-width:46ch;">Fale com a Weyne Representações e receba um atendimento consultivo, próximo e sob medida para o seu negócio.</p>
+        <div style="margin-top:34px;display:flex;flex-direction:column;gap:12px;">
+          <a href="#contato" data-contact style="display:flex;align-items:center;gap:16px;padding:18px 22px;background:#fff;border:1px solid var(--line);border-radius:16px;transition:.35s;" style-hover="border-color:var(--baltic);transform:translateX(4px)"><span style="width:46px;height:46px;border-radius:12px;background:rgba(3,79,131,.08);color:var(--blue);display:grid;place-items:center;flex:none;"><i class="ph-light ph-whatsapp-logo" style="font-size:24px;"></i></span><span><span style="display:block;font:600 11px/1 'Jost';letter-spacing:.14em;text-transform:uppercase;color:var(--muted);">WhatsApp</span><span style="display:block;margin-top:5px;font:600 17px/1 'Jost';color:var(--navy);">(00) 0 0000-0000</span></span></a>
+          <a href="#contato" data-contact style="display:flex;align-items:center;gap:16px;padding:18px 22px;background:#fff;border:1px solid var(--line);border-radius:16px;transition:.35s;" style-hover="border-color:var(--baltic);transform:translateX(4px)"><span style="width:46px;height:46px;border-radius:12px;background:rgba(3,79,131,.08);color:var(--blue);display:grid;place-items:center;flex:none;"><i class="ph-light ph-envelope-simple" style="font-size:24px;"></i></span><span style="min-width:0;"><span style="display:block;font:600 11px/1 'Jost';letter-spacing:.14em;text-transform:uppercase;color:var(--muted);">E-mail</span><span style="display:block;margin-top:5px;font-weight:600;font-family:'Jost';font-size:clamp(13px,3.5vw,17px);line-height:1.25;color:var(--navy);overflow-wrap:anywhere;">contato@weynerepresentacoes.com.br</span></span></a>
+          <div style="display:flex;align-items:center;gap:16px;padding:18px 22px;background:#fff;border:1px solid var(--line);border-radius:16px;"><span style="width:46px;height:46px;border-radius:12px;background:rgba(3,79,131,.08);color:var(--blue);display:grid;place-items:center;flex:none;"><i class="ph-light ph-map-pin" style="font-size:24px;"></i></span><span><span style="display:block;font:600 11px/1 'Jost';letter-spacing:.14em;text-transform:uppercase;color:var(--muted);">Regiões atendidas</span><span style="display:block;margin-top:5px;font:600 17px/1 'Jost';color:var(--navy);">Pernambuco · Alagoas · Paraíba · Rio Grande do Norte</span></span></div>
+        </div>
+      </div>
+
+      <form data-form data-reveal style="opacity:0;transform:translateY(26px);transition:opacity 1s cubic-bezier(.16,.8,.24,1) .1s,transform 1s cubic-bezier(.16,.8,.24,1) .1s;position:relative;background:linear-gradient(165deg,#034F83,#012C4B);border-radius:26px;padding:clamp(30px,3.6vw,46px);color:#fff;overflow:hidden;box-shadow:0 50px 100px -50px rgba(1,44,75,.9);">
+        <img src="assets/monogram-white.png" alt="" aria-hidden="true" style="position:absolute;width:150px;top:-24px;right:-24px;opacity:.08;pointer-events:none;">
+        <div style="position:relative;font-family:'Newsreader',serif;font-size:clamp(22px,2vw,27px);line-height:1.2;">Solicite um contato</div>
+        <p style="position:relative;margin:8px 0 26px;font-size:14.5px;line-height:1.6;color:rgba(255,255,255,.7);">Preencha os campos e retornamos o mais breve possível.</p>
+        <div style="position:relative;display:flex;flex-direction:column;gap:14px;">
+          <label style="display:block;"><span style="display:block;font:600 11px/1 'Jost';letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.66);margin-bottom:8px;">Nome</span><input name="nome" type="text" placeholder="Seu nome" style="width:100%;padding:15px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;font-size:15px;transition:.3s;"></label>
+          <label style="display:block;"><span style="display:block;font:600 11px/1 'Jost';letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.66);margin-bottom:8px;">Empresa</span><input name="empresa" type="text" placeholder="Nome da empresa" style="width:100%;padding:15px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;font-size:15px;transition:.3s;"></label>
+          <label style="display:block;"><span style="display:block;font:600 11px/1 'Jost';letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.66);margin-bottom:8px;">Mensagem</span><textarea name="mensagem" rows="3" placeholder="Como podemos ajudar?" style="width:100%;padding:15px 16px;border-radius:12px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);color:#fff;font-size:15px;resize:vertical;transition:.3s;"></textarea></label>
+          <button data-form-btn type="submit" style="margin-top:6px;display:inline-flex;align-items:center;justify-content:center;gap:11px;padding:17px 24px;border-radius:12px;border:0;background:var(--sand);color:#3a2a12;font:600 15.5px/1 'Jost';cursor:pointer;transition:.32s;" style-hover="background:#fff;transform:translateY(-2px)"><i class="ph-light ph-whatsapp-logo" style="font-size:20px;"></i>Enviar pelo WhatsApp</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ FOOTER ============ -->
+  <footer style="position:relative;overflow:hidden;background:#012C4B;color:#fff;padding:clamp(78px,9vw,116px) 0 34px;">
+    <svg viewBox="0 0 1440 110" preserveAspectRatio="none" aria-hidden="true" style="position:absolute;top:-1px;left:0;width:100%;height:clamp(44px,5.5vw,82px);display:block;pointer-events:none;"><path d="M0,0 H1440 V48 C1180,104 900,10 720,48 C540,86 260,100 0,52 Z" fill="#F6F3EC"></path></svg>
+    <div style="position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:0 clamp(18px,5vw,48px);">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:40px 32px;padding-bottom:clamp(40px,5vw,56px);border-bottom:1px solid rgba(255,255,255,.12);">
+        <div style="max-width:300px;">
+          <img src="assets/logo-horizontal-white.png" alt="Weyne Representações" style="width:168px;height:auto;">
+          <p style="margin:20px 0 0;font-size:14.5px;line-height:1.65;color:rgba(255,255,255,.66);">Relacionamento, conhecimento e soluções que geram resultados em higiene e limpeza profissional.</p>
+        </div>
+        <div>
+          <div style="font:600 11.5px/1 'Jost';letter-spacing:.16em;text-transform:uppercase;color:var(--sand);">Navegação</div>
+          <div style="margin-top:18px;display:flex;flex-direction:column;gap:12px;">
+            <a href="#sobre" style="color:rgba(255,255,255,.75);font-size:15px;transition:.25s;" style-hover="color:#fff">Sobre a Weyne</a>
+            <a href="#diferenciais" style="color:rgba(255,255,255,.75);font-size:15px;transition:.25s;" style-hover="color:#fff">Diferenciais</a>
+            <a href="#marcas" style="color:rgba(255,255,255,.75);font-size:15px;transition:.25s;" style-hover="color:#fff">Marcas representadas</a>
+            <a href="#segmentos" style="color:rgba(255,255,255,.75);font-size:15px;transition:.25s;" style-hover="color:#fff">Segmentos</a>
+          </div>
+        </div>
+        <div>
+          <div style="font:600 11.5px/1 'Jost';letter-spacing:.16em;text-transform:uppercase;color:var(--sand);">Regiões</div>
+          <div style="margin-top:18px;display:flex;flex-direction:column;gap:12px;font-size:15px;color:rgba(255,255,255,.75);">
+            <span>Pernambuco</span><span>Alagoas</span><span>Paraíba</span><span>Rio Grande do Norte</span>
+          </div>
+        </div>
+        <div>
+          <div style="font:600 11.5px/1 'Jost';letter-spacing:.16em;text-transform:uppercase;color:var(--sand);">Contato</div>
+          <div style="margin-top:18px;display:flex;flex-direction:column;gap:12px;font-size:15px;color:rgba(255,255,255,.75);">
+            <a href="#contato" style="color:rgba(255,255,255,.75);transition:.25s;" style-hover="color:#fff">WhatsApp: (00) 0 0000-0000</a>
+            <a href="#contato" style="color:rgba(255,255,255,.75);transition:.25s;" style-hover="color:#fff">contato@weynerepresentacoes.com.br</a>
+          </div>
+          <div style="margin-top:20px;display:flex;gap:10px;">
+            <a href="#contato" aria-label="WhatsApp" style="width:42px;height:42px;border-radius:11px;border:1px solid rgba(255,255,255,.16);display:grid;place-items:center;color:#fff;transition:.3s;" style-hover="background:var(--sand);color:#012C4B;border-color:var(--sand)"><i class="ph-light ph-whatsapp-logo" style="font-size:21px;"></i></a>
+            <a href="#contato" aria-label="Instagram" style="width:42px;height:42px;border-radius:11px;border:1px solid rgba(255,255,255,.16);display:grid;place-items:center;color:#fff;transition:.3s;" style-hover="background:var(--sand);color:#012C4B;border-color:var(--sand)"><i class="ph-light ph-instagram-logo" style="font-size:21px;"></i></a>
+            <a href="#contato" aria-label="LinkedIn" style="width:42px;height:42px;border-radius:11px;border:1px solid rgba(255,255,255,.16);display:grid;place-items:center;color:#fff;transition:.3s;" style-hover="background:var(--sand);color:#012C4B;border-color:var(--sand)"><i class="ph-light ph-linkedin-logo" style="font-size:21px;"></i></a>
+          </div>
+        </div>
+      </div>
+      <div style="padding-top:26px;display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;font-size:13px;color:rgba(255,255,255,.5);">
+        <span>© 2026 Weyne Representações. Todos os direitos reservados.</span>
+        <span>CNPJ 00.000.000/0001-00</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ============ FLOATING ACTIONS ============ -->
+  <div data-floaters style="position:fixed;z-index:70;right:calc(env(safe-area-inset-right, 0px) + 16px);bottom:calc(env(safe-area-inset-bottom, 0px) + 18px);display:flex;flex-direction:column;align-items:center;gap:12px;pointer-events:none;">
+    <button data-totop type="button" aria-label="Voltar ao topo" style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.94);color:var(--navy);border:1px solid var(--line);box-shadow:0 16px 32px -16px rgba(1,44,75,.55);cursor:pointer;display:grid;place-items:center;opacity:0;transform:translateY(14px) scale(.86);pointer-events:none;transition:opacity .35s,transform .35s;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);"><i class="ph-light ph-arrow-up" style="font-size:22px;"></i></button>
+    <a data-fab href="#contato" aria-label="Fale conosco no WhatsApp" style="pointer-events:auto;position:relative;width:58px;height:58px;border-radius:50%;background:var(--blue);color:#fff;box-shadow:0 20px 42px -16px rgba(3,79,131,.75);display:grid;place-items:center;transition:background .3s,transform .3s,box-shadow .3s,opacity .35s;" style-hover="background:var(--baltic);transform:translateY(-2px);box-shadow:0 26px 48px -16px rgba(6,156,255,.6)"><span aria-hidden="true" style="position:absolute;inset:0;border-radius:50%;border:2px solid var(--blue);opacity:.5;animation:wy-pulse 2.6s ease-out infinite;pointer-events:none;"></span><i class="ph-light ph-whatsapp-logo" style="font-size:30px;position:relative;"></i></a>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#EECAA0&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Tema&quot;,&quot;options&quot;:[&quot;#EECAA0&quot;,&quot;#069CFF&quot;,&quot;#034F83&quot;]},&quot;logoTreatment&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;muted&quot;,&quot;options&quot;:[&quot;muted&quot;,&quot;color&quot;],&quot;tsType&quot;:&quot;'muted'|'color'&quot;,&quot;section&quot;:&quot;Marcas&quot;},&quot;motion&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;full&quot;,&quot;options&quot;:[&quot;full&quot;,&quot;reduced&quot;],&quot;tsType&quot;:&quot;'full'|'reduced'&quot;,&quot;section&quot;:&quot;Movimento&quot;}}">
+class Component extends DCLogic {
+  componentDidMount(){ this._motion = true; this._wire(); this._applyProps(); }
+  componentDidUpdate(){ this._applyProps(); }
+
+  _root(){ return document.getElementById('wy'); }
+
+  _applyProps(){
+    const root = this._root(); if(!root) return;
+    const p = this.props || {};
+    root.style.setProperty('--accent', p.accent || '#EECAA0');
+    const treat = p.logoTreatment || 'muted';
+    root.querySelectorAll('[data-brandlogo]').forEach(img => {
+      if(treat === 'color'){ img.style.filter = 'none'; img.style.opacity = '1'; }
+      else { img.style.filter = 'grayscale(1)'; img.style.opacity = '.5'; }
+    });
+    this._motion = (p.motion || 'full') !== 'reduced';
+    if(!this._motion){
+      root.querySelectorAll('[data-reveal]').forEach(el => { el.style.opacity = '1'; el.style.transform = 'none'; });
+    }
+  }
+
+  _wire(){
+    if(this._wired) return; this._wired = true;
+    const root = this._root(); if(!root) return;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // NAV solidify on scroll
+    const nav = root.querySelector('[data-nav]');
+    const lw = root.querySelector('[data-logo-white]');
+    const lb = root.querySelector('[data-logo-blue]');
+    const wm = root.querySelector('[data-wordmark]');
+    const wmSub = root.querySelector('[data-wordmark-sub]');
+    const burger = root.querySelector('[data-burger]');
+    const totop = root.querySelector('[data-totop]');
+    const onScroll = () => {
+      const s = window.scrollY > 24;
+      if(nav){
+        nav.style.background = s ? 'rgba(255,255,255,.92)' : 'rgba(1,44,75,0)';
+        nav.style.boxShadow = s ? '0 1px 0 rgba(3,79,131,.08), 0 20px 44px -32px rgba(3,79,131,.55)' : 'none';
+        nav.style.backdropFilter = s ? 'saturate(150%) blur(16px)' : 'blur(2px)';
+        nav.style.webkitBackdropFilter = nav.style.backdropFilter;
+        nav.style.borderBottomColor = s ? 'rgba(3,79,131,.08)' : 'rgba(255,255,255,0)';
+        nav.style.setProperty('--navlink', s ? '#274a66' : 'rgba(255,255,255,.92)');
+      }
+      if(lw && lb){ lw.style.opacity = s ? '0' : '1'; lb.style.opacity = s ? '1' : '0'; }
+      if(wm){ wm.style.color = s ? '#0A2740' : '#fff'; }
+      if(wmSub){ wmSub.style.color = s ? 'rgba(3,79,131,.62)' : 'rgba(255,255,255,.72)'; }
+      if(burger){
+        burger.style.background = s ? 'rgba(3,79,131,.08)' : 'rgba(255,255,255,.16)';
+        burger.style.color = s ? '#12314C' : '#fff';
+        burger.style.borderColor = s ? 'rgba(3,79,131,.14)' : 'rgba(255,255,255,.28)';
+      }
+      if(totop){ const sh = window.scrollY > 520; totop.style.opacity = sh ? '1' : '0'; totop.style.transform = sh ? 'none' : 'translateY(14px) scale(.86)'; totop.style.pointerEvents = sh ? 'auto' : 'none'; }
+    };
+    window.addEventListener('scroll', onScroll, { passive:true });
+    onScroll();
+    if(totop){ totop.addEventListener('click', () => window.scrollTo({ top:0, behavior: reduced ? 'auto' : 'smooth' })); }
+    const fab = root.querySelector('[data-fab]');
+    const contatoSec = root.querySelector('#contato');
+    if(fab && contatoSec){
+      const fio = new IntersectionObserver((ents) => { ents.forEach(en => { const hide = en.isIntersecting; fab.style.opacity = hide ? '0' : '1'; fab.style.transform = hide ? 'translateY(14px) scale(.86)' : 'none'; fab.style.pointerEvents = hide ? 'none' : 'auto'; }); }, { threshold:0.18 });
+      fio.observe(contatoSec);
+    }
+
+    // Smooth anchor scroll with header offset
+    root.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', (e) => {
+        const id = a.getAttribute('href');
+        if(!id || id.length < 2) return;
+        const t = root.querySelector(id);
+        if(!t) return;
+        e.preventDefault();
+        const y = t.getBoundingClientRect().top + window.scrollY - 74;
+        window.scrollTo({ top:y, behavior: reduced ? 'auto' : 'smooth' });
+        this._setMenu(false);
+      });
+    });
+
+    // Mobile menu
+    if(burger){ burger.addEventListener('click', () => this._setMenu(!(root.querySelector('[data-mobile]').getAttribute('data-open') === '1'))); }
+    this._responsive();
+    window.addEventListener('resize', () => this._responsive());
+    const figImgEl = root.querySelector('img[src*="carolina-desk"]');
+    if(figImgEl && !figImgEl.complete) figImgEl.addEventListener('load', () => this._responsive());
+
+    // Scroll reveals
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach(en => { if(en.isIntersecting){ en.target.style.opacity = '1'; en.target.style.transform = 'none'; io.unobserve(en.target); } });
+    }, { threshold:0.12, rootMargin:'0px 0px -7% 0px' });
+    root.querySelectorAll('[data-reveal]').forEach(el => io.observe(el));
+    // safety net
+    setTimeout(() => { root.querySelectorAll('[data-reveal]').forEach(el => { if(getComputedStyle(el).opacity === '0'){ el.style.opacity = '1'; el.style.transform = 'none'; } }); }, 2800);
+
+    // Count up (markup already shows the real figures; animate from 0 when in view)
+    const counters = root.querySelectorAll('[data-count]');
+    if(this._motion){
+      counters.forEach(el => { el.textContent = '0'; });
+      const cio = new IntersectionObserver((entries) => {
+        entries.forEach(en => { if(en.isIntersecting){ this._count(en.target); cio.unobserve(en.target); } });
+      }, { threshold:0.4 });
+      counters.forEach(el => cio.observe(el));
+      // safety net: if the observer never fires, still show the real figures
+      setTimeout(() => { counters.forEach(el => { if(el.dataset.counted !== '1'){ el.textContent = el.getAttribute('data-count'); } }); }, 2200);
+    } else {
+      counters.forEach(el => { el.textContent = el.getAttribute('data-count'); });
+    }
+
+    // Differentiator card hovers
+    root.querySelectorAll('[data-card]').forEach(card => {
+      const icon = card.querySelector('[data-icon]');
+      const num = card.querySelector('[data-num]');
+      card.addEventListener('mouseenter', () => {
+        card.style.transform = 'translateY(-8px)';
+        card.style.boxShadow = '0 44px 74px -38px rgba(3,79,131,.45)';
+        card.style.borderColor = 'transparent';
+        if(icon){ icon.style.background = 'var(--blue)'; icon.style.color = '#fff'; }
+        if(num){ num.style.color = 'var(--accent)'; }
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = 'none';
+        card.style.boxShadow = 'none';
+        card.style.borderColor = 'var(--line)';
+        if(icon){ icon.style.background = 'rgba(3,79,131,.07)'; icon.style.color = 'var(--blue)'; }
+        if(num){ num.style.color = 'rgba(3,79,131,.18)'; }
+      });
+    });
+
+    // Brand card hovers (reveal descriptor)
+    root.querySelectorAll('[data-brand]').forEach(card => {
+      const desc = card.querySelector('[data-brand-desc]');
+      card.addEventListener('mouseenter', () => {
+        card.style.transform = 'translateY(-8px)';
+        card.style.boxShadow = '0 48px 84px -40px rgba(3,79,131,.5)';
+        card.style.borderColor = 'transparent';
+        if(desc){ desc.style.opacity = '1'; desc.style.transform = 'none'; }
+      });
+      card.addEventListener('mouseleave', () => {
+        card.style.transform = 'none';
+        card.style.boxShadow = 'none';
+        card.style.borderColor = 'var(--line)';
+        if(desc){ desc.style.opacity = '0'; desc.style.transform = 'translateY(14px)'; }
+      });
+      card.addEventListener('click', () => {
+        if(!window.matchMedia('(hover: none)').matches) return;
+        const open = card.getAttribute('data-open') === '1';
+        card.setAttribute('data-open', open ? '0' : '1');
+        if(desc){ desc.style.opacity = open ? '0' : '1'; desc.style.transform = open ? 'translateY(14px)' : 'none'; }
+      });
+    });
+
+    // Hero parallax on mouse move — gentle, damped (eased follow, not snappy)
+    const stage = root.querySelector('[data-hero]');
+    const layers = [...root.querySelectorAll('[data-par]')];
+    if(stage && layers.length){
+      let tx = 0, ty = 0, cx = 0, cy = 0, raf = null;
+      const lerp = (a, b, n) => a + (b - a) * n;
+      const apply = () => layers.forEach(l => { const d = parseFloat(l.getAttribute('data-par')) || 10; l.style.transform = 'translate(' + (cx*d).toFixed(2) + 'px,' + (cy*d).toFixed(2) + 'px)'; });
+      const tick = () => {
+        cx = lerp(cx, tx, 0.06); cy = lerp(cy, ty, 0.06);
+        apply();
+        if(Math.abs(cx - tx) > 0.0004 || Math.abs(cy - ty) > 0.0004){ raf = requestAnimationFrame(tick); } else { raf = null; }
+      };
+      const kick = () => { if(raf == null) raf = requestAnimationFrame(tick); };
+      stage.addEventListener('mousemove', (e) => {
+        if(!this._motion || reduced) return;
+        const r = stage.getBoundingClientRect();
+        tx = (e.clientX - r.left) / r.width - 0.5;
+        ty = (e.clientY - r.top) / r.height - 0.5;
+        kick();
+      });
+      stage.addEventListener('mouseleave', () => { tx = 0; ty = 0; kick(); });
+    }
+
+    // Contact form -> WhatsApp compose
+    const form = root.querySelector('[data-form]');
+    if(form){
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const fd = new FormData(form);
+        const nome = (fd.get('nome') || '').toString().trim();
+        const emp = (fd.get('empresa') || '').toString().trim();
+        const msg = (fd.get('mensagem') || '').toString().trim();
+        let txt = 'Ola! Gostaria de falar com a Weyne Representacoes.';
+        if(nome) txt = 'Ola! Sou ' + nome + (emp ? ' (' + emp + ')' : '') + '.' + (msg ? ' ' + msg : '');
+        window.open('https://wa.me/5500000000000?text=' + encodeURIComponent(txt), '_blank');
+        const btn = form.querySelector('[data-form-btn]');
+        if(btn){ const o = btn.innerHTML; btn.innerHTML = 'Abrindo o WhatsApp…'; setTimeout(() => { btn.innerHTML = o; }, 2600); }
+      });
+    }
+  }
+
+  _setMenu(open){
+    const root = this._root(); if(!root) return;
+    const menu = root.querySelector('[data-mobile]');
+    const burger = root.querySelector('[data-burger]');
+    if(!menu) return;
+    menu.setAttribute('data-open', open ? '1' : '0');
+    menu.style.opacity = open ? '1' : '0';
+    menu.style.transform = open ? 'translateY(0)' : 'translateY(-12px)';
+    menu.style.pointerEvents = open ? 'auto' : 'none';
+    if(burger){ const i = burger.querySelector('i'); if(i) i.className = open ? 'ph-light ph-x' : 'ph-light ph-list'; }
+  }
+
+  _responsive(){
+    const root = this._root(); if(!root) return;
+    const w = window.innerWidth;
+    const mobile = w < 900;
+    const phone = w < 640;
+    const touch = window.matchMedia('(hover: none)').matches;
+    const links = root.querySelector('[data-desktop-nav]');
+    const burger = root.querySelector('[data-burger]');
+    if(links) links.style.display = mobile ? 'none' : 'flex';
+    if(burger) burger.style.display = mobile ? 'inline-flex' : 'none';
+    if(!mobile) this._setMenu(false);
+    const navEl = root.querySelector('[data-nav] nav');
+    if(navEl){ navEl.style.paddingTop = mobile ? 'max(env(safe-area-inset-top, 0px), 44px)' : '16px'; }
+
+    // Hero figure: swap to a tighter mobile crop + fit the column to it (no empty void)
+    const figCol = root.querySelector('[data-herofig]');
+    const figImg = root.querySelector('img[src*="carolina-desk"]');
+    if(figCol && figImg){
+      if(phone){
+        if(!figImg.src.includes('carolina-desk-mobile')) figImg.src = 'assets/carolina-desk-mobile.png';
+        const w = figImg.getBoundingClientRect().width;
+        figCol.style.minHeight = w ? Math.round(w * 1280 / 1200) + 'px' : 'min(520px,116vw)';
+      } else {
+        if(figImg.src.includes('carolina-desk-mobile')) figImg.src = 'assets/carolina-desk.png';
+        figCol.style.minHeight = 'clamp(500px,80vh,780px)';
+      }
+    }
+    // Hero badge: keep it fully on-screen on phones
+    const badge = root.querySelector('[data-herobadge]');
+    if(badge){ badge.style.left = phone ? '10px' : '-2%'; badge.style.bottom = phone ? '30%' : '34%'; }
+
+    // Stats card: gentler overlap + horizontal dividers when stacked
+    const sw = root.querySelector('[data-statwrap]');
+    if(sw){ sw.style.marginTop = phone ? '-44px' : '-72px'; }
+    const sg = root.querySelector('[data-statgrid]');
+    if(sg){
+      const cells = [...sg.children];
+      cells.forEach((c, i) => {
+        const last = i === cells.length - 1;
+        if(phone){ c.style.borderRight = 'none'; c.style.borderBottom = last ? 'none' : '1px solid var(--line)'; }
+        else { c.style.borderRight = last ? 'none' : '1px solid var(--line)'; c.style.borderBottom = 'none'; }
+      });
+    }
+    // Marcas: the "hover to reveal" hint is meaningless on touch
+    const hint = root.querySelector('[data-hoverhint]');
+    if(hint){ hint.style.display = (touch || phone) ? 'none' : ''; }
+  }
+
+  _count(el){
+    el.dataset.counted = '1';
+    const target = parseInt(el.getAttribute('data-count'), 10) || 0;
+    if(!this._motion){ el.textContent = target.toString(); return; }
+    const dur = 1400, t0 = performance.now();
+    const step = (t) => {
+      const k = Math.min(1, (t - t0) / dur);
+      const e = 1 - Math.pow(1 - k, 3);
+      el.textContent = Math.round(target * e).toString();
+      if(k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  renderVals(){ return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,26 @@
+# Keep the build context small and reproducible. Source, public assets,
+# scripts (the content gate), and deploy/Caddyfile are all that the image needs.
+.git
+.github
+node_modules
+dist
+.output
+.nitro
+.tanstack
+.vite
+coverage
+playwright-report
+test-results
+blob-report
+tests
+docs
+scratchpad
+*.log
+
+# Never ship env files into the build context (but keep the documented example).
+**/.env
+**/.env.*
+!deploy/.env.weyne.example
+
+.DS_Store
+Thumbs.db

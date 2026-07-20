@@ -1,0 +1,227 @@
+@import 'tailwindcss' source('../');
+@import 'tw-animate-css';
+
+/* Self-hosted variable fonts (Fontsource). Newsreader ships display serif
+   (roman + italic); Jost is the UI sans. Only the subsets the rendered
+   glyphs need (latin + latin-ext for pt-BR) are downloaded. */
+@import '@fontsource-variable/jost';
+@import '@fontsource-variable/newsreader';
+@import '@fontsource-variable/newsreader/wght-italic.css';
+
+@theme {
+  /* Families */
+  --font-sans: 'Jost Variable', system-ui, sans-serif;
+  --font-display: 'Newsreader Variable', ui-serif, Georgia, serif;
+
+  /* Navigation collapses to the burger + sheet below this width. */
+  --breakpoint-nav: 56.25rem; /* 900px */
+
+  /* Brand palette (exact handoff hex) */
+  --color-navy: #012c4b;
+  --color-blue: #034f83;
+  --color-baltic: #069cff;
+  --color-sand: #eecaa0;
+  --color-paper: #f6f3ec;
+  --color-ink: #12314c;
+  --color-muted: #5c7286;
+  --color-line: rgb(3 79 131 / 0.13);
+
+  /* House easing (cubic-bezier(.16,.8,.24,1)) */
+  --ease-house: cubic-bezier(0.16, 0.8, 0.24, 1);
+
+  /* Recurring shadows */
+  --shadow-band: 0 40px 80px -46px rgb(3 79 131 / 0.4);
+  --shadow-founder: 0 46px 90px -50px rgb(3 79 131 / 0.42);
+  --shadow-form: 0 50px 100px -50px rgb(1 44 75 / 0.9);
+  --shadow-card-hover: 0 44px 74px -38px rgb(3 79 131 / 0.45);
+  --shadow-brand-hover: 0 48px 84px -40px rgb(3 79 131 / 0.5);
+  --shadow-pill: 0 12px 26px -14px rgb(3 79 131 / 0.75);
+
+  /* Named motion */
+  --animate-float: wy-float 7.5s ease-in-out infinite;
+  --animate-pulse-ring: wy-pulse-ring 2.6s ease-out infinite;
+
+  @keyframes wy-float {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-9px);
+    }
+  }
+
+  @keyframes wy-pulse-ring {
+    0% {
+      transform: scale(1);
+      opacity: 0.5;
+    }
+    70% {
+      transform: scale(1.85);
+      opacity: 0;
+    }
+    100% {
+      opacity: 0;
+    }
+  }
+}
+
+/* Hero load animations (pure CSS → run without JS, honor reduced motion via the
+   global reset below). Used with arbitrary [animation:wy-up_...] utilities so
+   they self-complete to the visible end state. */
+@keyframes wy-up {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes wy-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* shadcn/ui token bridge — mapped onto the brand palette (light only; no dark mode) */
+:root {
+  --background: var(--color-paper);
+  --foreground: var(--color-ink);
+  --card: #fff;
+  --card-foreground: var(--color-ink);
+  --popover: #fff;
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-blue);
+  --primary-foreground: #fff;
+  --secondary: var(--color-sand);
+  --secondary-foreground: #3a2a12;
+  --muted: var(--color-paper);
+  --muted-foreground: var(--color-muted);
+  --accent: var(--color-sand);
+  --accent-foreground: var(--color-navy);
+  --destructive: #c2410c;
+  --border: var(--color-line);
+  --input: var(--color-line);
+  --ring: var(--color-baltic);
+  --radius: 0.75rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+/* Repeated brand gradients as first-class utilities */
+@utility bg-hero-radial {
+  background: radial-gradient(
+    125% 120% at 82% 4%,
+    #0a5c98 0%,
+    #034f83 40%,
+    #012c4b 100%
+  );
+}
+
+@utility bg-card-gradient {
+  background: linear-gradient(165deg, #034f83, #012c4b);
+}
+
+@utility bg-segments-gradient {
+  background: linear-gradient(155deg, #034f83 0%, #012c4b 100%);
+}
+
+/* Base document */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 96px;
+  background: var(--color-paper);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  overflow-x: clip;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+::selection {
+  background: var(--color-sand);
+  color: var(--color-navy);
+}
+
+/* Keep the brand focus ring consistent and visible for keyboard users */
+:focus-visible {
+  outline: 2px solid var(--color-baltic);
+  outline-offset: 2px;
+}
+
+/* Scroll reveal (fade + rise).
+   Elements are hidden ONLY when JavaScript is present (`data-js` is set by a
+   blocking head script before first paint), so:
+   - no-JS renders content visible (no `data-js` → the hide rule never matches);
+   - with JS, content is hidden from the very first paint and never painted-
+     then-hidden (no flash), independent of hydration speed (dev or prod).
+   Per-element timing comes from CSS variables set inline by <Reveal>. */
+[data-reveal] {
+  transition:
+    opacity var(--rv-fade, 800ms) var(--rv-delay, 0ms) var(--ease-house),
+    transform var(--rv-rise-dur, 500ms) var(--rv-delay, 0ms) var(--ease-house);
+}
+[data-js] [data-reveal]:not([data-reveal-in]) {
+  opacity: 0;
+  transform: translateY(var(--rv-rise, 24px));
+}
+/* Safety net: reveal everything if the reveal JS never runs. */
+[data-reveal-fallback] [data-reveal] {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  /* Reduced motion: never hide reveal content. */
+  [data-js] [data-reveal] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

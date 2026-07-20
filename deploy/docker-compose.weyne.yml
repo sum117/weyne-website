@@ -1,0 +1,60 @@
+# ─────────────────────────────────────────────────────────────────────────
+# Weyne Representações — production stack (masoria-vps).
+#
+# Fully ISOLATED from the masoria stack: its own compose project (`weyne`),
+# its own network, and its own Cloudflare tunnel. It shares only the Docker
+# daemon, so nothing here can affect masoria.
+#
+#   cd ~/weyne
+#   docker compose --env-file .env.weyne pull
+#   docker compose --env-file .env.weyne up -d
+#
+# Ingress: Cloudflare edge (TLS) → weyne tunnel → cloudflared → web:80.
+# No host ports are published; the VPS exposes nothing new to the internet.
+# ─────────────────────────────────────────────────────────────────────────
+name: weyne
+
+services:
+  web:
+    image: ghcr.io/sum117/weyne-web:${IMAGE_TAG:?set IMAGE_TAG in .env.weyne (release SHA or "latest")}
+    restart: always
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    environment:
+      # Dedicated 'weyne' tunnel token (Zero Trust → Networks → Tunnels).
+      # This is NOT the account API token. `:?` fails the deploy loudly if unset.
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env.weyne}
+    restart: always
+    depends_on: [web]
+    networks: [edge]
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  edge:
+    name: weyne_edge

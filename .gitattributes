@@ -1,0 +1,17 @@
+# Normalize line endings: LF in the repository for everything text, so the
+# Linux Docker build and CI never see CRLF. Windows checkouts get LF too.
+* text=auto eol=lf
+
+# Binary assets — never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+
+# Lockfile: keep as-is, LF.
+bun.lock text eol=lf
