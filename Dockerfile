@@ -9,8 +9,12 @@
 # ─────────────────────────────────────────────────────────────────────────
 
 # ── Build stage ──────────────────────────────────────────────────────────
-FROM oven/bun:1.3 AS build
+# Mirror the CI environment (Node present + Bun). The TanStack Start prerender
+# spins up a Node server and requests each route; a Bun-only image has no
+# `node`, so nothing listens and the step fails with "Unable to connect".
+FROM node:22-bookworm-slim AS build
 WORKDIR /app
+RUN npm install -g bun@1.3.14
 
 # Dependency layer — cached until package.json / bun.lock change.
 COPY package.json bun.lock ./
@@ -24,8 +28,8 @@ ARG VITE_WHATSAPP_NUMBER=""
 ENV VITE_SITE_ORIGIN=$VITE_SITE_ORIGIN
 ENV VITE_WHATSAPP_NUMBER=$VITE_WHATSAPP_NUMBER
 COPY . .
-# Build the prerendered client only. The content/quality gate (which uses tsx,
-# a Node tool absent from this Bun-only image) runs in CI on the same commit.
+# Build the prerendered client. The content/quality gate runs in CI on the
+# same commit, keeping this image build focused on producing the artifact.
 RUN bun run build:app
 
 # ── Runtime stage ────────────────────────────────────────────────────────
