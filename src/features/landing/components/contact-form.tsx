@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from '@tanstack/react-form'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,23 @@ const fieldClass =
 
 export function ContactForm() {
   const [opening, setOpening] = useState(false)
+
+  // "Abrindo o WhatsApp…" is transient feedback. On mobile, launching WhatsApp
+  // backgrounds/freezes this page (bfcache), so the setTimeout fallback can be
+  // suspended and never fire — leaving the button stuck. Clear the state the
+  // moment the user returns (page shown again / tab becomes visible).
+  useEffect(() => {
+    const reset = () => setOpening(false)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') reset()
+    }
+    window.addEventListener('pageshow', reset)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener('pageshow', reset)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [])
 
   const form = useForm({
     defaultValues: { nome: '', empresa: '', mensagem: '' },

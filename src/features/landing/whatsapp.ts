@@ -11,6 +11,13 @@
 /** Anchor used as the soft-conversion fallback while no real number exists. */
 export const CONTACT_ANCHOR = '#contato'
 
+/**
+ * The lead form itself. The floating WhatsApp action targets this (not the
+ * section top) so that on mobile — where the heading and contact rows stack
+ * above the form — a tap lands directly on the form.
+ */
+export const CONTACT_FORM_ANCHOR = '#contato-form'
+
 /** Exact default greeting used when the lead form has no name. */
 export const DEFAULT_WHATSAPP_MESSAGE =
   'Olá! Gostaria de falar com a Weyne Representações.'

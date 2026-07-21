@@ -12,6 +12,8 @@ import { prefersReducedMotion } from '@/lib/motion'
 export type RevealProps = {
   children: ReactNode
   className?: string
+  /** Optional DOM id — e.g. to serve as an anchor target. */
+  id?: string
   /** Entrance delay in ms (stagger within a group). */
   delay?: number
   /** Rise distance in px for the entrance. */
@@ -38,6 +40,7 @@ export type RevealProps = {
 export function Reveal({
   children,
   className,
+  id,
   as: Tag = 'div',
   delay = 0,
   rise = 24,
@@ -87,6 +90,7 @@ export function Reveal({
   return (
     <Tag
       ref={ref}
+      id={id}
       data-reveal=""
       data-reveal-in={shown ? '' : undefined}
       style={style}

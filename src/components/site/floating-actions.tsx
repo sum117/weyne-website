@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react'
 import { ArrowUp, WhatsappLogo } from '@phosphor-icons/react/dist/ssr'
 import { cn } from '@/lib/cn'
 import { prefersReducedMotion } from '@/lib/motion'
-import { CONTACT_ANCHOR } from '@/features/landing/whatsapp'
+import { CONTACT_FORM_ANCHOR } from '@/features/landing/whatsapp'
 import { siteConfig } from '@/features/landing/content'
 
-// The FAB leads to the contact form (and hides once it is in view) rather than
-// opening WhatsApp directly — the form composes the message. Matches the
-// prototype + DESIGN_SPEC ("hides while #contato is in view to avoid
-// duplicating the form CTA").
-const fabHref = CONTACT_ANCHOR
+// The FAB leads to the lead form (and hides once the contact section is in
+// view) rather than opening WhatsApp directly — the form composes the message.
+// It targets the form itself so that on mobile a tap lands on the form, not the
+// section heading and contact rows that stack above it.
+const fabHref = CONTACT_FORM_ANCHOR
 const { floating } = siteConfig
 
 export function FloatingActions() {

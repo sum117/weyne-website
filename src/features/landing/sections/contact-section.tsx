@@ -5,7 +5,12 @@ import { Reveal } from '../components/reveal'
 import { SectionEyebrow } from '../components/section-eyebrow'
 import { IconTile } from '../components/icon-tile'
 import { ContactForm } from '../components/contact-form'
-import { DEFAULT_WHATSAPP_MESSAGE, buildWhatsAppUrl, isUsableWhatsAppNumber } from '../whatsapp'
+import {
+  CONTACT_FORM_ANCHOR,
+  DEFAULT_WHATSAPP_MESSAGE,
+  buildWhatsAppUrl,
+  isUsableWhatsAppNumber,
+} from '../whatsapp'
 import { KNOWN_PLACEHOLDERS } from '../content.schema'
 import { siteConfig } from '../content'
 
@@ -94,6 +99,7 @@ export function ContactSection() {
 
         {/* Right: form card */}
         <Reveal
+          id={CONTACT_FORM_ANCHOR.slice(1)}
           className="relative overflow-hidden rounded-[26px] p-[clamp(30px,3.6vw,46px)] text-white shadow-form bg-card-gradient"
           rise={26}
           fadeMs={1000}
