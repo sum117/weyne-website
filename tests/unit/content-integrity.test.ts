@@ -49,19 +49,12 @@ describe('content integrity', () => {
 })
 
 describe('production readiness (placeholder rejection)', () => {
-  it('flags the CNPJ placeholder but not the confirmed origin/contact values', () => {
-    const errors = validateProductionReadiness(siteConfig).filter(
-      (i) => i.level === 'error',
-    )
-    const joined = errors.map((e) => e.message).join(' ')
-    // CNPJ is the last remaining placeholder → still flagged.
-    expect(joined).toMatch(/CNPJ/i)
-    // Origin is confirmed, so canonical URL + OG image are no longer flagged.
-    expect(joined).not.toMatch(/Canonical/i)
-    expect(joined).not.toMatch(/Open Graph/i)
-    // WhatsApp, phone and email are confirmed → not flagged.
-    expect(joined).not.toMatch(/WhatsApp/i)
-    expect(joined).not.toMatch(/Email/i)
+  it('has no readiness errors — all contact data is confirmed', () => {
+    const issues = validateProductionReadiness(siteConfig)
+    // WhatsApp, phone, email, CNPJ, canonical, and OG image are all confirmed.
+    expect(issues.filter((i) => i.level === 'error')).toEqual([])
+    // Anything left is an optional social link, surfaced as a warning only.
+    for (const issue of issues) expect(issue.level).toBe('warn')
   })
 
   it('passes production readiness when real values are supplied', () => {

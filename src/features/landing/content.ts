@@ -198,8 +198,8 @@ const contactInfo: SiteContact = {
   whatsappNumber: publicEnv.whatsappNumber ?? '+55 (81) 99996-4054',
   phoneDisplay: '+55 (81) 99996-4054',
   email: 'carolina@weynerepresentacoes.com.br',
-  // PLACEHOLDER — client input required before launch.
-  cnpj: '00.000.000/0001-00',
+  // Confirmed by client (2026-07-21).
+  cnpj: '05.095.383/0001-42',
   // Not supplied — render as soft placeholder; remove only with approval.
   instagramUrl: undefined,
   linkedinUrl: undefined,
@@ -241,6 +241,7 @@ const localBusinessJsonLd: LocalBusinessJsonLd = {
   email: contactInfo.email,
   // Confirmed WhatsApp line, in E.164.
   telephone: '+5581999964054',
+  taxID: contactInfo.cnpj,
   founder: { '@type': 'Person', name: 'Carolina Weyne' },
   knowsLanguage: ['pt-BR'],
   areaServed: ['Pernambuco', 'Alagoas', 'Paraíba', 'Rio Grande do Norte'].map(
