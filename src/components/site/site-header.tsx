@@ -142,7 +142,7 @@ export function SiteHeader() {
           <SheetContent
             side="top"
             showClose={false}
-            className="inset-x-3 top-3 gap-1 rounded-[20px] border border-line p-3.5 shadow-[0_40px_70px_-34px_rgb(1_20_36/0.5)]"
+            className="inset-x-3 top-[max(env(safe-area-inset-top,0px),12px)] gap-1 rounded-[20px] border border-line p-3.5 shadow-[0_40px_70px_-34px_rgb(1_20_36/0.5)]"
           >
             <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
             <SheetDescription className="sr-only">
