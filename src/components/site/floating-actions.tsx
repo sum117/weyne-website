@@ -41,7 +41,7 @@ export function FloatingActions() {
   }
 
   return (
-    <div className="pointer-events-none fixed right-[calc(env(safe-area-inset-right,0px)+16px)] bottom-[calc(env(safe-area-inset-bottom,0px)+18px)] z-70 flex flex-col items-center gap-3">
+    <div className="pointer-events-none fixed right-[calc(env(safe-area-inset-right,0px)+16px)] bottom-[calc(env(safe-area-inset-bottom,0px)+18px)] z-fab flex flex-col items-center gap-3">
       <button
         type="button"
         aria-label={floating.backToTopLabel}

@@ -153,6 +153,29 @@
   background: linear-gradient(155deg, #034f83 0%, #012c4b 100%);
 }
 
+/* Overlay stacking order — the single source of truth for cross-component
+   z-index. Everything that shares the root stacking context (the fixed header,
+   floating actions, portalled Radix modals, the skip link) competes here, so a
+   new global layer goes in THIS ordered list, top to bottom:
+     z-skip    (100) skip-to-content link — always on top
+     z-overlay (80)  modal / sheet backdrop + panel — must beat header + fab
+     z-fab     (70)  floating actions (WhatsApp / back-to-top)
+     z-header  (60)  sticky site header
+   Local within-section overlaps (e.g. a card over a wave divider) stay as small
+   z-1…z-5 and never reach up into this range. */
+@utility z-header {
+  z-index: 60;
+}
+@utility z-fab {
+  z-index: 70;
+}
+@utility z-overlay {
+  z-index: 80;
+}
+@utility z-skip {
+  z-index: 100;
+}
+
 /* Base document */
 html {
   scroll-behavior: smooth;
