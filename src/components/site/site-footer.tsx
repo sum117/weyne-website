@@ -57,13 +57,17 @@ export function SiteFooter() {
         <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-x-8 gap-y-10 border-b border-white/12 pb-[clamp(40px,5vw,56px)]">
           {/* Brand */}
           <div className="max-w-75">
-            <img
-              src="/images/logo-horizontal-white.png"
-              alt={footer.logoAlt}
-              width={168}
-              height={44}
-              className="h-auto w-42"
-            />
+            <picture>
+              <source srcSet="/images/logo-horizontal-white.webp" type="image/webp" />
+              <img
+                src="/images/logo-horizontal-white.png"
+                alt={footer.logoAlt}
+                width={168}
+                height={44}
+                loading="lazy"
+                className="h-auto w-42"
+              />
+            </picture>
             <p className="mt-5 text-[14.5px] leading-[1.65] text-white/66">
               {footer.tagline}
             </p>
@@ -136,7 +140,7 @@ export function SiteFooter() {
         </div>
 
         {/* Developer credit — deliberately quiet: author + open-source repo. */}
-        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[12px] text-white/35">
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[12px] text-white/70">
           <span>Desenvolvido por</span>
           <a
             href="https://github.com/sum117"
@@ -155,7 +159,7 @@ export function SiteFooter() {
             rel="noreferrer noopener"
             className="inline-flex items-center gap-1 text-white/60 transition duration-200 hover:text-sand focus-visible:text-sand focus-visible:outline-hidden"
           >
-            <GithubLogo size={13} weight="fill" aria-hidden="true" />
+            <GithubLogo size={13} weight="light" aria-hidden="true" />
             código-fonte
           </a>
         </div>

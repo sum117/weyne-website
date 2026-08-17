@@ -22,7 +22,7 @@ export function DifferentiatorsSection() {
           </p>
         </Reveal>
 
-        <div className="mt-[clamp(40px,5vw,64px)] grid grid-cols-[repeat(auto-fit,minmax(290px,1fr))] gap-[clamp(16px,1.6vw,22px)]">
+        <div className="mt-[clamp(40px,5vw,64px)] grid grid-cols-[repeat(auto-fit,minmax(290px,1fr))] gap-[clamp(16px,1.6vw,22px)] max-sm:grid-cols-1">
           {differentiators.items.map((item, i) => {
             const Icon = item.icon
             return (
@@ -30,7 +30,7 @@ export function DifferentiatorsSection() {
                 <article className="group relative h-full overflow-hidden rounded-[22px] border border-line bg-white p-[clamp(28px,2.6vw,36px)] transition-[translate,box-shadow,border-color] duration-500 ease-house hover:-translate-y-2 hover:border-transparent hover:shadow-card-hover">
                   <span
                     aria-hidden="true"
-                    className="absolute top-5.5 right-6.5 font-display text-[34px] text-[rgb(3_79_131/0.18)] transition-colors duration-500 group-hover:text-sand"
+                    className="absolute top-5.5 right-6.5 font-display text-[34px] text-muted transition-colors duration-500 group-hover:text-blue"
                   >
                     {String(i + 1).padStart(2, '0')}
                   </span>

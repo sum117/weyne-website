@@ -94,15 +94,18 @@ export function HeroSection() {
           className="relative flex min-h-[clamp(500px,80vh,780px)] min-w-72.5 flex-[1_1_350px] animate-[wy-fade_1.1s_0.2s_both] justify-center max-sm:min-h-0"
         >
           {/* Brand outline watermark (parallax layer) */}
-          <img
-            src="/images/outline-white.png"
-            alt=""
-            aria-hidden="true"
-            data-par="24"
-            width={900}
-            height={900}
-            className="pointer-events-none absolute top-[-4%] left-[-17%] w-[134%] max-w-none opacity-8 will-change-transform"
-          />
+          <picture>
+            <source srcSet="/images/outline-white.webp" type="image/webp" />
+            <img
+              src="/images/outline-white.png"
+              alt=""
+              aria-hidden="true"
+              data-par="24"
+              width={900}
+              height={900}
+              className="pointer-events-none absolute top-[-4%] left-[-17%] w-[134%] max-w-none opacity-8 will-change-transform"
+            />
+          </picture>
           {/* Soft radial glow (parallax layer) */}
           <div
             aria-hidden="true"
@@ -139,14 +142,17 @@ export function HeroSection() {
           </picture>
           {/* Floating badge */}
           <div className="absolute bottom-[34%] left-[-2%] z-3 flex animate-float items-center gap-3.25 rounded-[17px] bg-white/97 px-5 py-3 pl-3.75 shadow-[0_26px_46px_-22px_rgb(1_18_32/0.6)] max-sm:bottom-[30%] max-sm:left-2.5">
-            <img
-              src="/images/monogram-blue.png"
-              alt=""
-              aria-hidden="true"
-              width={28}
-              height={28}
-              className="size-7 object-contain"
-            />
+            <picture>
+              <source srcSet="/images/monogram-blue.webp" type="image/webp" />
+              <img
+                src="/images/monogram-blue.png"
+                alt=""
+                aria-hidden="true"
+                width={28}
+                height={28}
+                className="size-7 object-contain"
+              />
+            </picture>
             <div>
               <div className="font-sans text-[10px] leading-tight font-semibold tracking-[0.16em] text-muted uppercase">
                 {hero.badgeLabel}

@@ -40,14 +40,18 @@ export function SegmentsSection() {
       </svg>
 
       {/* Giant monogram watermark */}
-      <img
-        src="/images/monogram-white.png"
-        alt=""
-        aria-hidden="true"
-        width={520}
-        height={520}
-        className="pointer-events-none absolute right-[-6%] bottom-[-14%] w-[min(46vw,520px)] opacity-5"
-      />
+      <picture>
+        <source srcSet="/images/monogram-white.webp" type="image/webp" />
+        <img
+          src="/images/monogram-white.png"
+          alt=""
+          aria-hidden="true"
+          width={520}
+          height={520}
+          loading="lazy"
+          className="pointer-events-none absolute right-[-6%] bottom-[-14%] w-[min(46vw,520px)] opacity-5"
+        />
+      </picture>
 
       <div className="relative z-2 mx-auto max-w-300 px-[clamp(18px,5vw,48px)]">
         <Reveal className="max-w-180" rise={24} fadeMs={900} riseMs={900}>

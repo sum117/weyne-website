@@ -10,7 +10,7 @@ export function AboutSection() {
       id="sobre"
       className="pt-[clamp(88px,11vw,150px)] pb-[clamp(72px,9vw,120px)]"
     >
-      <div className="mx-auto grid max-w-300 grid-cols-[repeat(auto-fit,minmax(330px,1fr))] items-center gap-[clamp(40px,6vw,88px)] px-[clamp(18px,5vw,48px)]">
+      <div className="mx-auto grid max-w-300 grid-cols-[repeat(auto-fit,minmax(330px,1fr))] items-center gap-[clamp(40px,6vw,88px)] px-[clamp(18px,5vw,48px)] max-sm:grid-cols-1">
         {/* Left: heading + quote */}
         <Reveal rise={28} fadeMs={900} riseMs={900}>
           <SectionEyebrow tone="light">{about.eyebrow}</SectionEyebrow>
@@ -35,14 +35,18 @@ export function AboutSection() {
           riseMs={1000}
           delay={100}
         >
-          <img
-            src="/images/monogram-sand.png"
-            alt=""
-            aria-hidden="true"
-            width={180}
-            height={180}
-            className="w-45ity-50 pointer-events-none absolute -top-7.5 -right-7.5"
-          />
+          <picture>
+            <source srcSet="/images/monogram-sand.webp" type="image/webp" />
+            <img
+              src="/images/monogram-sand.png"
+              alt=""
+              aria-hidden="true"
+              width={180}
+              height={180}
+              loading="lazy"
+              className="w-45ity-50 pointer-events-none absolute -top-7.5 -right-7.5"
+            />
+          </picture>
           <div className="relative font-sans text-[11.5px] leading-none font-semibold tracking-[0.2em] text-blue uppercase">
             {about.founder.label}
           </div>
@@ -63,14 +67,18 @@ export function AboutSection() {
           </div>
           <div className="relative mt-7 flex items-center gap-3.75 border-t border-line pt-6">
             <div className="grid size-12.5 shrink-0 place-items-center rounded-full border border-line bg-paper">
-              <img
-                src="/images/monogram-blue.png"
-                alt=""
-                aria-hidden="true"
-                width={26}
-                height={26}
-                className="size-6.5 object-contain"
-              />
+              <picture>
+                <source srcSet="/images/monogram-blue.webp" type="image/webp" />
+                <img
+                  src="/images/monogram-blue.png"
+                  alt=""
+                  aria-hidden="true"
+                  width={26}
+                  height={26}
+                  loading="lazy"
+                  className="size-6.5 object-contain"
+                />
+              </picture>
             </div>
             <div>
               <div className="font-display text-[21px] leading-none text-navy">

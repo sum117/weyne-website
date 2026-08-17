@@ -10,7 +10,7 @@ export function BrandsSection() {
     <section id="marcas" className="py-[clamp(84px,11vw,150px)]">
       <div className="mx-auto max-w-300 px-[clamp(18px,5vw,48px)]">
         <Reveal
-          className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] items-end gap-x-[clamp(30px,5vw,70px)] gap-y-5"
+          className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] items-end gap-x-[clamp(30px,5vw,70px)] gap-y-5 max-sm:grid-cols-1"
           rise={24}
           fadeMs={900}
           riseMs={900}
