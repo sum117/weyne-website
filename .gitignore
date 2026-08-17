@@ -12,11 +12,13 @@ dist
 # (committed is fine too, but it is regenerated on build)
 
 # test / tooling output
+artifacts
 coverage
 playwright-report
 test-results
 blob-report
 tests/e2e/__screenshots__
+spikes/**/dist
 
 # env
 .env
@@ -25,6 +27,7 @@ tests/e2e/__screenshots__
 # production secrets (live only on the VPS)
 .env.weyne
 deploy/.env.weyne
+deploy/.env.storage
 
 # logs
 *.log
@@ -38,5 +41,8 @@ bun-debug.log*
 !.vscode/extensions.json
 Thumbs.db
 
-# local agent/tooling config (personal)
+# local agent/tooling config and scratch (personal)
 .claude/
+.hermes/
+.hermes-tmp.*
+**/.hermes-tmp.*

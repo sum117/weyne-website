@@ -10,6 +10,8 @@ export default tseslint.config(
       '.nitro',
       '.tanstack',
       'node_modules',
+      'artifacts/**',
+      'spikes/**/dist/**',
       'playwright-report',
       'test-results',
       'docs/**',
