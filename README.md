@@ -47,16 +47,22 @@ conversation**.
 | Icons | Phosphor (`weight="light"`) |
 | Fonts | Fontsource — Newsreader + Jost, self-hosted |
 | Tooling | Bun · Vite 7 · ESLint · Vitest · Playwright |
-| Delivery | Docker (Caddy static) · Cloudflare Tunnel · GHCR · GitHub Actions |
+| Delivery | Node 24 SSR · Caddy reverse proxy · Cloudflare Tunnel · GHCR · GitHub Actions |
 
 ## Getting started
 
-**Prerequisites:** [Bun](https://bun.sh) `1.3+`.
+**Prerequisites:** [Bun](https://bun.sh) `1.3+` and Docker with Compose v2.
 
 ```bash
 bun install
+bun run db:setup       # first boot: PostgreSQL + migrations + smoke seed
 bun run dev            # http://localhost:3000
 ```
+
+Copy [`.env.example`](.env.example) to `.env` for the server-side local
+database URL. Database start, readiness, migration, seed, destructive reset,
+and recovery procedures are documented in
+[`docs/local-database.md`](docs/local-database.md).
 
 ### Environment (optional)
 
@@ -76,9 +82,13 @@ secrets in a `VITE_` variable):
 |---|---|
 | `bun run dev` | Vite dev server |
 | `bun run build` | `check:content` → prerendered production build |
+| `bun run build:app` / `start` | Build client + server output / run the Node production SSR process |
 | `bun run check` | Full gate: content → typecheck → lint → unit tests → build |
 | `bun run test` / `test:watch` | Vitest unit tests |
+| `bun run db:setup` | Start local PostgreSQL, wait for health, migrate, and seed |
+| `bun run db:reset` | Destructively recreate the local volume, migrate, and seed |
 | `bun run test:e2e` | Playwright end-to-end (run under Node) |
+| `bun run test:production-smoke` | Build and exercise the local SSR + Caddy stack in Chromium |
 | `bun run check:content` | Content/launch-config validation (add `WEYNE_RELEASE=1` for the release gate) |
 | `bun run serve:static` | Serve `dist/client` exactly as a static host would |
 | `bun run generate:og` | Re-render the OG image from HTML |
@@ -96,7 +106,7 @@ src/
   components/        site/ (nav, footer, floating actions) · ui/ (shadcn source)
   styles/app.css     Tailwind v4 @theme tokens, utilities, reveal CSS
 scripts/             check-content · generate-og · generate-icons · serve-dist
-deploy/              Caddyfile · docker-compose.weyne.yml · .env.weyne.example
+deploy/              Caddy reverse proxy · local/production Compose · env inventory
 public/              images, favicons, og/, robots.txt, sitemap.xml
 ```
 
@@ -116,19 +126,25 @@ place** to edit copy and business values. Two validation tiers guard it:
 
 ## Deployment
 
-The site is a static image served by Caddy, reached only through a **dedicated
-Cloudflare Tunnel** — no public ports are opened on the host. It runs as an
+The image runs the TanStack Start Node 24 server behind Caddy and a **dedicated
+Cloudflare Tunnel** — no public ports are opened on the host. `/` remains a
+physical prerendered document and hydrates in the browser; `/app`, nested app
+routes, and server functions require the live SSR process. The stack runs as an
 **isolated Docker Compose project** (`weyne`) alongside, but fully independent
-of, other stacks on the server.
+of, other stacks on the server. See the credential-free local build, start,
+health, cache, environment, CI, and troubleshooting runbook in
+[`docs/operations/ssr-runtime.md`](docs/operations/ssr-runtime.md).
 
 ```mermaid
 flowchart LR
   U["Visitor"] -->|HTTPS| CF["Cloudflare edge · TLS + WAF"]
   CF -->|encrypted tunnel| CFD["cloudflared"]
-  CFD -->|http://web:80| W["Caddy · static dist/client"]
+  CFD -->|http://web:80| W["Caddy · compression + policy"]
+  W -->|http://app:3000| A["TanStack Start · prerender + SSR"]
   subgraph VPS["masoria-vps · docker project 'weyne'"]
     CFD
     W
+    A
   end
 ```
 
@@ -136,29 +152,43 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  push["git push main"] --> ci["ci.yml · full check"]
-  push --> pub["publish.yml · build image"]
+  push["pull request / git push main"] --> ci["ci.yml · full check"]
+  push --> pub["publish.yml · test + image validation"]
   pub --> ghcr[("ghcr.io/sum117/weyne-web")]
   ghcr -->|docker compose pull| vps["masoria-vps"]
 ```
 
 - **`ci.yml`** runs the full gate on every push/PR.
-- **`publish.yml`** builds the image and pushes `ghcr.io/sum117/weyne-web`
-  tagged `:latest` and `:sha-<full-sha>`.
+- **`publish.yml`** runs the complete gate, Dockerfile checks, an unprivileged
+  image build, and a container health smoke test for pull requests without
+  logging into GHCR. On `main`, the validated release is published once as
+  `:sha-<full-sha>` and the `:latest` alias, with SBOM/provenance attestations.
+  The immutable digest is retained in the `image-release-<full-sha>` workflow
+  artifact and the job summary.
 
 **One-time server setup**
 
 ```bash
 # on masoria-vps
 mkdir -p ~/weyne && cd ~/weyne
-# copy deploy/docker-compose.weyne.yml and deploy/.env.weyne.example here
-cp .env.weyne.example .env.weyne     # then set CLOUDFLARE_TUNNEL_TOKEN + IMAGE_TAG
+# copy the versioned deploy files here
+cp .env.weyne.example .env.weyne     # then set image, database, and tunnel values
 docker compose --env-file .env.weyne pull
 docker compose --env-file .env.weyne up -d
 ```
 
-**Update to a new release** — set `IMAGE_TAG` to the new SHA in `.env.weyne`, then
-`docker compose --env-file .env.weyne pull && ... up -d`. Rollback = previous SHA.
+These are operator reference commands, not an automated deployment step. Local
+SSR/Caddy validation uses only non-secret placeholders and does not require
+credentials; follow the operations runbook before touching a target host.
+
+**Update or rollback** — download the selected run's `image-release-<full-sha>`
+artifact, copy its `reference=ghcr.io/...@sha256:...` value into `WEYNE_IMAGE`,
+then run `docker compose --env-file .env.weyne pull && docker compose
+--env-file .env.weyne up -d`. To roll back, select a prior successful workflow
+run and repeat with its retained digest. Never deploy `:latest`; it is only a
+human-friendly alias and may move, while commit tags and digest references remain
+available for rollback. Registry retention policies must exempt `sha-*` tags;
+the workflow refuses to overwrite one if it already exists.
 
 ## SEO
 

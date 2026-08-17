@@ -1,0 +1,11 @@
+[Unit]
+Description=Alert for failed Weyne PostgreSQL backup unit %i
+
+[Service]
+Type=oneshot
+EnvironmentFile=-/etc/weyne/postgres-backup-alert.env
+ExecStart=/bin/sh /opt/weyne/deploy/postgres/alert-failure.sh %i
+User=weyne-ops
+Group=weyne-ops
+NoNewPrivileges=true
+PrivateTmp=true
