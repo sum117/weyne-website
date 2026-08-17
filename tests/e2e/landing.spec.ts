@@ -19,6 +19,15 @@ import {
 
 const digits = normalizeWhatsAppNumber(siteConfig.contactInfo.whatsappNumber)
 const formCopy = siteConfig.contact.form
+const reflowViewports = [
+  { width: 1440, height: 1000 },
+  { width: 1024, height: 900 },
+  { width: 768, height: 1024 },
+  { width: 430, height: 932 },
+  { width: 390, height: 844 },
+  { width: 360, height: 800 },
+  { width: 320, height: 800 },
+] as const
 
 test('prerendered document carries the SEO head contract', async ({ page }) => {
   await page.goto('/')
@@ -67,6 +76,42 @@ test('hydrates: reveal boot flag set and nav is usable', async ({ page }) => {
       'href',
       item.href,
     )
+  }
+})
+
+test('reflows without page-level horizontal overflow at every canonical width', async ({
+  page,
+}) => {
+  for (const viewport of reflowViewports) {
+    await page.setViewportSize(viewport)
+    await page.goto('/')
+    await expect(page.locator('html')).toHaveAttribute('data-js', '')
+
+    const overflow = await page.evaluate(() => {
+      const clientWidth = document.documentElement.clientWidth
+      const offenders = Array.from(document.querySelectorAll<HTMLElement>('body *'))
+        .map((element) => {
+          const bounds = element.getBoundingClientRect()
+          return {
+            element: `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}`,
+            classes: element.className.toString().slice(0, 160),
+            left: Math.round(bounds.left),
+            right: Math.round(bounds.right),
+          }
+        })
+        .filter(({ left, right }) => left < 0 || right > clientWidth)
+        .slice(0, 10)
+
+      return {
+        clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        offenders,
+      }
+    })
+    expect(
+      overflow.scrollWidth,
+      `${viewport.width}px overflow candidates: ${JSON.stringify(overflow.offenders)}`,
+    ).toBe(overflow.clientWidth)
   }
 })
 
@@ -127,6 +172,7 @@ test('lead form surfaces validation instead of opening WhatsApp', async ({
 test('has no serious or critical accessibility violations', async ({
   page,
 }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/')
   await expect(page.locator('html')).toHaveAttribute('data-js', '')
 

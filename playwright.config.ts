@@ -1,11 +1,12 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const PORT = 3100
+const PORT = 3191
 const BASE_URL = `http://localhost:${PORT}`
 
 /**
- * E2E runs against the prerendered client build served statically, so tests
- * exercise the real initial HTML plus the hydrating client bundle.
+ * E2E runs against the production runtime. The public route is still served
+ * from its prerendered HTML while application routes exercise their real SSR
+ * response plus the hydrating client bundle.
  * Run a production build first: `bun run build` then `bun run test:e2e`.
  */
 export default defineConfig({
@@ -27,8 +28,14 @@ export default defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   webServer: {
-    command: `bun scripts/serve-dist.ts ${PORT}`,
-    url: BASE_URL,
+    command: 'node dist/server/runtime.js',
+    url: `${BASE_URL}/healthz`,
+    env: {
+      DATABASE_URL:
+        'postgresql://weyne_test:weyne_test@127.0.0.1:5432/weyne_test',
+      HOST: '127.0.0.1',
+      PORT: String(PORT),
+    },
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },
