@@ -10,33 +10,79 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as AppPadroesRouteImport } from './routes/app_.padroes'
+import { Route as AppProdutosRouteImport } from './routes/app_.produtos'
+import { Route as AppRelatoriosRouteImport } from './routes/app_.relatorios'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppPadroesRoute = AppPadroesRouteImport.update({
+  id: '/app_/padroes',
+  path: '/app/padroes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppProdutosRoute = AppProdutosRouteImport.update({
+  id: '/app_/produtos',
+  path: '/app/produtos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
+  id: '/app_/relatorios',
+  path: '/app/relatorios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
+  '/app/padroes': typeof AppPadroesRoute
+  '/app/produtos': typeof AppProdutosRoute
+  '/app/relatorios': typeof AppRelatoriosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
+  '/app/padroes': typeof AppPadroesRoute
+  '/app/produtos': typeof AppProdutosRoute
+  '/app/relatorios': typeof AppRelatoriosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRoute
+  '/app_/padroes': typeof AppPadroesRoute
+  '/app_/produtos': typeof AppProdutosRoute
+  '/app_/relatorios': typeof AppRelatoriosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/app' | '/app/padroes' | '/app/produtos' | '/app/relatorios'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/app' | '/app/padroes' | '/app/produtos' | '/app/relatorios'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/app_/padroes'
+    | '/app_/produtos'
+    | '/app_/relatorios'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRoute
+  AppPadroesRoute: typeof AppPadroesRoute
+  AppProdutosRoute: typeof AppProdutosRoute
+  AppRelatoriosRoute: typeof AppRelatoriosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +94,43 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app_/padroes': {
+      id: '/app_/padroes'
+      path: '/app/padroes'
+      fullPath: '/app/padroes'
+      preLoaderRoute: typeof AppPadroesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app_/produtos': {
+      id: '/app_/produtos'
+      path: '/app/produtos'
+      fullPath: '/app/produtos'
+      preLoaderRoute: typeof AppProdutosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app_/relatorios': {
+      id: '/app_/relatorios'
+      path: '/app/relatorios'
+      fullPath: '/app/relatorios'
+      preLoaderRoute: typeof AppRelatoriosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRoute,
+  AppPadroesRoute: AppPadroesRoute,
+  AppProdutosRoute: AppProdutosRoute,
+  AppRelatoriosRoute: AppRelatoriosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
