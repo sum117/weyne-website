@@ -91,17 +91,22 @@ export async function loadPostgresReportMetrics<
           OR o.id IN (
             SELECT DISTINCT ON (latest.client_id) latest.id
             FROM orders latest
-            JOIN quotes latest_quote ON latest_quote.id = latest.source_quote_id
             WHERE ${input.request.role === 'admin'
               ? sql`TRUE`
               : input.request.role === 'representative'
-                ? sql`latest_quote.owner_user_id = ${input.request.actorRepresentativeId}`
+                ? sql`EXISTS (
+                    SELECT 1 FROM quotes latest_quote
+                    WHERE latest_quote.id = latest.source_quote_id
+                      AND latest_quote.owner_user_id = ${input.request.actorRepresentativeId})`
                 : input.request.explicitlyAssignedRepresentativeIds.length === 0
                   ? sql`FALSE`
-                  : sql`latest_quote.owner_user_id IN (${sql.join(
-                      input.request.explicitlyAssignedRepresentativeIds.map((id) => sql`${id}`),
-                      sql`, `,
-                    )})`}
+                  : sql`EXISTS (
+                    SELECT 1 FROM quotes latest_quote
+                    WHERE latest_quote.id = latest.source_quote_id
+                      AND latest_quote.owner_user_id IN (${sql.join(
+                        input.request.explicitlyAssignedRepresentativeIds.map((id) => sql`${id}`),
+                        sql`, `,
+                      )}))`}
               AND latest.status <> 'cancelled'
               AND latest.created_at < ${asOfExclusive}::timestamptz
             ORDER BY latest.client_id, latest.created_at DESC, latest.id DESC
