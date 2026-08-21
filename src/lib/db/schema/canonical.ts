@@ -426,6 +426,88 @@ export const productAssets = pgTable(
   ],
 )
 
+/**
+ * Private document logo assets referenced by `settings.value.documents.logoAssetId`.
+ *
+ * Lifecycle: `staged` assets await activation; activation is the atomic swap
+ * that also commits the settings reference. Active assets are permanent —
+ * issued-document snapshots carry their id, so they are never purged or
+ * deleted. Only abandoned staged assets may be purged. Objects live in private
+ * object storage under opaque `document-logos/<uuid>` keys; no public URL ever
+ * exists.
+ */
+export const documentLogoStatusEnum = pgEnum('document_logo_status', [
+  'staged',
+  'active',
+  'purged',
+])
+
+export const documentLogoAssets = pgTable(
+  'document_logo_assets',
+  {
+    id: uuidPk(),
+    status: documentLogoStatusEnum('status').notNull().default('staged'),
+    objectKey: text('object_key').notNull(),
+    originalFilename: text('original_filename').notNull(),
+    mimeType: text('mime_type').notNull(),
+    sizeBytes: bigint('size_bytes', { mode: 'bigint' }).notNull(),
+    checksumSha256: char('checksum_sha256', { length: 64 }).notNull(),
+    width: integer('width'),
+    height: integer('height'),
+    createdAt: requiredInstant('created_at'),
+    createdByUserId: uuid('created_by_user_id').notNull().references(() => users.id, {
+      onDelete: 'restrict',
+    }),
+    activatedAt: instant('activated_at'),
+    activatedByUserId: uuid('activated_by_user_id').references(() => users.id, {
+      onDelete: 'restrict',
+    }),
+    purgedAt: instant('purged_at'),
+    purgedByUserId: uuid('purged_by_user_id').references(() => users.id, {
+      onDelete: 'restrict',
+    }),
+  },
+  (table) => [
+    unique('document_logo_assets_object_key_uidx').on(table.objectKey),
+    index('document_logo_assets_status_created_idx').on(
+      table.status,
+      table.createdAt,
+      table.id,
+    ),
+    check(
+      'document_logo_assets_size_ck',
+      sql`${table.sizeBytes} > 0 AND ${table.sizeBytes} <= 2097152`,
+    ),
+    check(
+      'document_logo_assets_mime_ck',
+      sql`${table.mimeType} IN ('image/png', 'image/jpeg', 'image/webp')`,
+    ),
+    check(
+      'document_logo_assets_checksum_ck',
+      sql`${table.checksumSha256} ~ '^[0-9a-f]{64}$'`,
+    ),
+    check(
+      'document_logo_assets_object_key_ck',
+      sql`${table.objectKey} ~ '^document-logos/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'`,
+    ),
+    check(
+      'document_logo_assets_filename_ck',
+      sql`btrim(${table.originalFilename}) <> '' AND char_length(${table.originalFilename}) <= 255`,
+    ),
+    check(
+      'document_logo_assets_dimensions_ck',
+      sql`(${table.width} IS NULL AND ${table.height} IS NULL)
+        OR (${table.width} > 0 AND ${table.height} > 0)`,
+    ),
+    check(
+      'document_logo_assets_lifecycle_ck',
+      sql`(${table.status} = 'staged' AND ${table.activatedAt} IS NULL AND ${table.activatedByUserId} IS NULL AND ${table.purgedAt} IS NULL AND ${table.purgedByUserId} IS NULL)
+        OR (${table.status} = 'active' AND ${table.activatedAt} IS NOT NULL AND ${table.activatedByUserId} IS NOT NULL AND ${table.purgedAt} IS NULL AND ${table.purgedByUserId} IS NULL)
+        OR (${table.status} = 'purged' AND ${table.purgedAt} IS NOT NULL AND ${table.purgedByUserId} IS NOT NULL)`,
+    ),
+  ],
+)
+
 export const priceLists = pgTable(
   'price_lists',
   {

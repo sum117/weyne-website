@@ -18,6 +18,7 @@ const TABLES = [
   canonical.carriers,
   canonical.products,
   canonical.productAssets,
+  canonical.documentLogoAssets,
   canonical.priceLists,
   canonical.productPrices,
   canonical.commissionRules,
@@ -67,6 +68,7 @@ async function applyCanonicalMigrations(client: Sql): Promise<void> {
   expect(migrationNames).toEqual([
     '0000_canonical_schema.sql',
     '0001_canonical_invariants.sql',
+    '0002_document_logo_assets.sql',
   ])
   for (const migrationName of migrationNames) {
     await client.unsafe(await readFile(resolve(directory, migrationName), 'utf8'))

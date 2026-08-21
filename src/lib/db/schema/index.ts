@@ -12,6 +12,7 @@ export {
 
 export { carriers } from './carriers'
 export { carrierAudit } from './carrier-audit'
+export { documentLogoAssets } from './canonical'
 export { quotePdfArtifacts, quoteSnapshots } from './quote-pdf'
 export {
   customers,
