@@ -101,7 +101,7 @@ async function seedBusinessRecord() {
   `
   await harness.sql`
     INSERT INTO settings (key, value, created_by_user_id, updated_by_user_id)
-    VALUES ('business', ${canonicalSettings()}, ${adminId}, ${adminId})
+    VALUES ('business', ${JSON.stringify(canonicalSettings())}::text::jsonb, ${adminId}, ${adminId})
   `
 }
 
