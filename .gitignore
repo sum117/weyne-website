@@ -28,6 +28,7 @@ spikes/**/dist
 .env.weyne
 deploy/.env.weyne
 deploy/.env.storage
+deploy/.env.staging
 
 # logs
 *.log
