@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as AppPadroesRouteImport } from './routes/app_.padroes'
 import { Route as AppProdutosRouteImport } from './routes/app_.produtos'
 import { Route as AppRelatoriosRouteImport } from './routes/app_.relatorios'
+import { Route as AppConfiguracoesAuditoriaRouteImport } from './routes/app_.configuracoes_.auditoria'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +41,12 @@ const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
   path: '/app/relatorios',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppConfiguracoesAuditoriaRoute =
+  AppConfiguracoesAuditoriaRouteImport.update({
+    id: '/app_/configuracoes_/auditoria',
+    path: '/app/configuracoes/auditoria',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +54,7 @@ export interface FileRoutesByFullPath {
   '/app/padroes': typeof AppPadroesRoute
   '/app/produtos': typeof AppProdutosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/app/configuracoes/auditoria': typeof AppConfiguracoesAuditoriaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +62,7 @@ export interface FileRoutesByTo {
   '/app/padroes': typeof AppPadroesRoute
   '/app/produtos': typeof AppProdutosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/app/configuracoes/auditoria': typeof AppConfiguracoesAuditoriaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,12 +71,25 @@ export interface FileRoutesById {
   '/app_/padroes': typeof AppPadroesRoute
   '/app_/produtos': typeof AppProdutosRoute
   '/app_/relatorios': typeof AppRelatoriosRoute
+  '/app_/configuracoes_/auditoria': typeof AppConfiguracoesAuditoriaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/app/padroes' | '/app/produtos' | '/app/relatorios'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/app/padroes'
+    | '/app/produtos'
+    | '/app/relatorios'
+    | '/app/configuracoes/auditoria'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app' | '/app/padroes' | '/app/produtos' | '/app/relatorios'
+  to:
+    | '/'
+    | '/app'
+    | '/app/padroes'
+    | '/app/produtos'
+    | '/app/relatorios'
+    | '/app/configuracoes/auditoria'
   id:
     | '__root__'
     | '/'
@@ -75,6 +97,7 @@ export interface FileRouteTypes {
     | '/app_/padroes'
     | '/app_/produtos'
     | '/app_/relatorios'
+    | '/app_/configuracoes_/auditoria'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -83,6 +106,7 @@ export interface RootRouteChildren {
   AppPadroesRoute: typeof AppPadroesRoute
   AppProdutosRoute: typeof AppProdutosRoute
   AppRelatoriosRoute: typeof AppRelatoriosRoute
+  AppConfiguracoesAuditoriaRoute: typeof AppConfiguracoesAuditoriaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -122,6 +146,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRelatoriosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app_/configuracoes_/auditoria': {
+      id: '/app_/configuracoes_/auditoria'
+      path: '/app/configuracoes/auditoria'
+      fullPath: '/app/configuracoes/auditoria'
+      preLoaderRoute: typeof AppConfiguracoesAuditoriaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -131,6 +162,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppPadroesRoute: AppPadroesRoute,
   AppProdutosRoute: AppProdutosRoute,
   AppRelatoriosRoute: AppRelatoriosRoute,
+  AppConfiguracoesAuditoriaRoute: AppConfiguracoesAuditoriaRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
