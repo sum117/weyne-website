@@ -1,3 +1,4 @@
+import { logStructuredEvent, logUnexpectedError } from '@/lib/server/log-redaction'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import type { Sql } from 'postgres'
@@ -89,7 +90,7 @@ function toPublicError(error: unknown): QuotePdfPublicError {
       reason: error.reason,
     }
   }
-  console.error('Quote PDF endpoint failed.', error)
+  logUnexpectedError('quote-pdf.endpoint', error)
   return { code: 'INTERNAL_ERROR', status: 500, message: 'Não foi possível concluir a operação.' }
 }
 
@@ -97,6 +98,9 @@ function resolveSchemaName(): string {
   const configured = process.env.WEYNE_DB_SCHEMA?.trim()
   if (!configured) {
     throw new Error('WEYNE_DB_SCHEMA is required for quote PDF endpoints')
+  }
+  if (!/^[a-z_][a-z0-9_]*$/i.test(configured)) {
+    throw new Error(`Invalid PostgreSQL schema name: ${configured}`)
   }
   return configured
 }
@@ -159,19 +163,17 @@ function createConsoleAuditSink() {
     }) {
       // Actor, quote, version/artifact, action, timestamp. No signed URLs and
       // no document contents are ever logged.
-      console.info(
-        JSON.stringify({
-          kind: 'audit',
-          action: event.action,
-          actorId: event.actorId,
-          quoteId: event.quoteId,
-          artifactId: event.artifactId,
-          snapshotVersion: event.snapshotVersion,
-          templateVariant: event.templateVariant,
-          outcome: event.outcome,
-          occurredAt: new Date().toISOString(),
-        }),
-      )
+      logStructuredEvent({
+        kind: 'audit',
+        action: event.action,
+        actorId: event.actorId,
+        quoteId: event.quoteId,
+        artifactId: event.artifactId,
+        snapshotVersion: event.snapshotVersion,
+        templateVariant: event.templateVariant,
+        outcome: event.outcome,
+        occurredAt: new Date().toISOString(),
+      })
     },
   }
 }

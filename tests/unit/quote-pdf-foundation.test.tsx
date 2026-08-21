@@ -7,6 +7,7 @@ import {
   formatPtBrDecimal,
   getBundledPdfAssets,
   renderQuotePdfToBuffer,
+  resolvePdfImageSource,
   type QuotePdfSnapshot,
 } from '@/lib/pdf'
 
@@ -145,6 +146,29 @@ describe('shared quote PDF foundation', () => {
     expect(readFileSync(assets.companyLogo).byteLength).toBeGreaterThan(100)
     expect(readFileSync(assets.fonts.jostRegular).byteLength).toBeGreaterThan(100)
     expect(readFileSync(assets.fonts.newsreaderRegular).byteLength).toBeGreaterThan(100)
+  })
+
+  it('refuses remote, data, and blob URI image sources instead of fetching them', () => {
+    const hostilePaths = [
+      'https://evil.example/logo.png',
+      'http://evil.example/logo.png',
+      'data:image/png;base64,aGVsbG8=',
+      'data:text/html,<script>alert(1)</script>',
+      'blob:https://evil.example/1234',
+      'file://C:/Windows/win.ini',
+      '\\\\server\\share\\logo.png',
+    ]
+    for (const path of hostilePaths) {
+      expect(
+        resolvePdfImageSource({ kind: 'local-path', path }),
+        `expected ${path} to be rejected`,
+      ).toBeNull()
+    }
+
+    // Legitimate inline bytes still render.
+    expect(
+      resolvePdfImageSource({ kind: 'bytes', data: new Uint8Array([1, 2, 3]) }),
+    ).not.toBeNull()
   })
 
   it('keeps rendering free of browser APIs, remote assets, and financial engines', () => {

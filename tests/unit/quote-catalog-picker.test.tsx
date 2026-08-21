@@ -209,4 +209,119 @@ describe('QuoteCatalogPicker', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Tentar novamente' }))
     await waitFor(() => expect(failing).toHaveBeenCalledTimes(2))
   })
+
+  it('renders facet counts and forwards industry, brand, and category filters in one request', async () => {
+    const searchCatalog = vi
+      .fn<QuoteDataService['searchCatalog']>()
+      .mockResolvedValue(response)
+    renderPicker({}, searchCatalog)
+
+    const industryFacet = await screen.findByLabelText('Indústria')
+    expect(industryFacet).toHaveValue('')
+    const brandFacet = screen.getByLabelText('Marca')
+    const categoryFacet = screen.getByLabelText('Categoria')
+    await waitFor(() => {
+      expect(withinOption(industryFacet, 'Indústria Norte (2)')).toBeTruthy()
+      expect(withinOption(brandFacet, 'Marca Azul (2)')).toBeTruthy()
+      expect(withinOption(categoryFacet, 'Higiene (2)')).toBeTruthy()
+    })
+
+    fireEvent.change(industryFacet, { target: { value: 'industry-north' } })
+    await waitFor(() =>
+      expect(searchCatalog).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          industryIds: ['industry-north'],
+          cursor: undefined,
+        }),
+      ),
+    )
+    const brandFacetAfter = screen.getByLabelText('Marca')
+    await waitFor(() => {
+      expect(withinOption(brandFacetAfter, 'Marca Azul (2)')).toBeTruthy()
+    })
+    fireEvent.change(brandFacetAfter, {
+      target: { value: 'Marca Azul' },
+    })
+    await waitFor(() =>
+      expect(searchCatalog).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          industryIds: ['industry-north'],
+          brands: ['Marca Azul'],
+          categories: undefined,
+        }),
+      ),
+    )
+  })
+
+  it('keeps the controlled price-list context authoritative over the default', async () => {
+    const onPriceListChange = vi.fn()
+    renderPicker({
+      selectedPriceListId: 'price-list-2',
+      defaultPriceListId: 'price-list-1',
+      onPriceListChange,
+    })
+
+    const select = await screen.findByLabelText('Tabela de preços')
+    expect(select).toHaveValue('price-list-2')
+    await screen.findByRole('option', { name: /Detergente concentrado/ })
+    expect(select).toHaveTextContent(/Preço 1 \(padrão\)/)
+
+    fireEvent.change(select, { target: { value: 'price-list-1' } })
+    expect(onPriceListChange).toHaveBeenCalledWith('price-list-1')
+    // Controlled prop wins: the visible selection stays pinned to the parent.
+    expect(select).toHaveValue('price-list-2')
+  })
+
+  it('excludes archived and unpriced products from keyboard activation', async () => {
+    const unpricedProduct: CatalogProduct = {
+      ...activeProduct,
+      id: 'product-unpriced',
+      internalCode: 'INT-003',
+      description: 'Produto sem preço',
+      selectedPrice: null,
+    }
+    renderPicker(
+      {},
+      vi.fn<QuoteDataService['searchCatalog']>().mockResolvedValue({
+        ...response,
+        items: [activeProduct, archivedProduct, unpricedProduct],
+      }),
+    )
+
+    await screen.findByRole('option', { name: /Detergente concentrado/ })
+    expect(
+      screen.getByRole('option', { name: /Papel institucional/ }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      screen.getByRole('option', { name: /Produto sem preço/ }),
+    ).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByText(/Sem preço nesta tabela/)).toBeInTheDocument()
+  })
+
+  it('does not create N+1 requests: one catalog request per state change', async () => {
+    const searchCatalog = vi
+      .fn<QuoteDataService['searchCatalog']>()
+      .mockResolvedValue(response)
+    renderPicker({}, searchCatalog)
+
+    await screen.findByRole('option', { name: /Detergente concentrado/ })
+    expect(searchCatalog).toHaveBeenCalledTimes(1)
+
+    // Facet + search + pagination changes each produce exactly one new
+    // batched request — never one request per product row.
+    fireEvent.change(screen.getByLabelText('Indústria'), {
+      target: { value: 'industry-north' },
+    })
+    await waitFor(() => expect(searchCatalog).toHaveBeenCalledTimes(2))
+    await screen.findByRole('button', { name: 'Próxima página' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Próxima página' }))
+    await waitFor(() => expect(searchCatalog).toHaveBeenCalledTimes(3))
+  })
 })
+
+function withinOption(select: HTMLElement, text: string) {
+  return [...(select as HTMLSelectElement).options].find(
+    (option) => option.textContent === text,
+  )
+}

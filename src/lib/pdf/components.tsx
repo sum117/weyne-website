@@ -39,12 +39,16 @@ export const pdfStyles = StyleSheet.create({
     color: pdfPalette.ink,
     fontFamily: 'Weyne Jost',
     fontSize: 9,
-    lineHeight: 1.42,
+    // NOTE: no `lineHeight` here. A page-scoped line height corrupts the layout
+    // of the absolutely-positioned `fixed` header/footer subtrees under
+    // @react-pdf/renderer 4.6.1 and silently drops both from every page. Body
+    // text inherits its rhythm from the `bodyRhythm` wrapper below instead.
     paddingTop: 104,
     paddingRight: 38,
     paddingBottom: 52,
     paddingLeft: 38,
   },
+  bodyRhythm: { lineHeight: 1.42 },
   header: {
     position: 'absolute',
     top: 0,
@@ -444,46 +448,48 @@ export function QuotePdfFoundationDocument({
         <QuotePdfHeader snapshot={snapshot} />
         <QuotePdfFooter snapshot={snapshot} />
 
-        <PdfSection title="Cliente e proposta">
-          <View style={pdfStyles.twoColumns}>
-            <View style={pdfStyles.grow}>
-              <ClientDetails snapshot={snapshot} />
-            </View>
-            <View style={[pdfStyles.card, pdfStyles.grow]}>
-              <QuoteMetadata snapshot={snapshot} />
-            </View>
-          </View>
-        </PdfSection>
-
-        <PdfSection title="Itens do orçamento" minPresenceAhead={100}>
-          <View style={pdfStyles.card}>
-            {snapshot.items.map((item) => (
-              <ProductItem key={item.lineId} item={item} />
-            ))}
-          </View>
-        </PdfSection>
-
-        <PdfSection title="Resumo financeiro" minPresenceAhead={170}>
-          <FinancialSummary snapshot={snapshot} />
-        </PdfSection>
-
-        {snapshot.notes ? (
-          <PdfSection title="Observações">
-            <View style={pdfStyles.card}>
-              <Text>{snapshot.notes}</Text>
+        <View style={pdfStyles.bodyRhythm}>
+          <PdfSection title="Cliente e proposta">
+            <View style={pdfStyles.twoColumns}>
+              <View style={pdfStyles.grow}>
+                <ClientDetails snapshot={snapshot} />
+              </View>
+              <View style={[pdfStyles.card, pdfStyles.grow]}>
+                <QuoteMetadata snapshot={snapshot} />
+              </View>
             </View>
           </PdfSection>
-        ) : null}
 
-        {snapshot.signatures.length > 0 ? (
-          <PdfSection title="Assinaturas" minPresenceAhead={110}>
-            <View style={pdfStyles.signatures}>
-              {snapshot.signatures.map((signature) => (
-                <SignatureBlock key={signature.label} signature={signature} />
+          <PdfSection title="Itens do orçamento" minPresenceAhead={100}>
+            <View style={pdfStyles.card}>
+              {snapshot.items.map((item) => (
+                <ProductItem key={item.lineId} item={item} />
               ))}
             </View>
           </PdfSection>
-        ) : null}
+
+          <PdfSection title="Resumo financeiro" minPresenceAhead={170}>
+            <FinancialSummary snapshot={snapshot} />
+          </PdfSection>
+
+          {snapshot.notes ? (
+            <PdfSection title="Observações">
+              <View style={pdfStyles.card}>
+                <Text>{snapshot.notes}</Text>
+              </View>
+            </PdfSection>
+          ) : null}
+
+          {snapshot.signatures.length > 0 ? (
+            <PdfSection title="Assinaturas" minPresenceAhead={110}>
+              <View style={pdfStyles.signatures}>
+                {snapshot.signatures.map((signature) => (
+                  <SignatureBlock key={signature.label} signature={signature} />
+                ))}
+              </View>
+            </PdfSection>
+          ) : null}
+        </View>
       </Page>
     </Document>
   )

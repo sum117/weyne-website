@@ -33,6 +33,9 @@ const resumidaStyles = StyleSheet.create({
     ...pdfStyles.page,
     paddingTop: 116,
   },
+  // Page-scoped lineHeight corrupts the fixed header/footer subtrees (see the
+  // note on pdfStyles.page); the flowing body carries its own rhythm instead.
+  bodyRhythm: { ...pdfStyles.bodyRhythm },
   continuationContext: {
     position: 'absolute',
     top: 84,
@@ -375,54 +378,56 @@ export function ResumidaQuotePdfDocument({
         <ContinuationContext snapshot={snapshot} />
         <QuotePdfFooter snapshot={snapshot} />
 
-        <PdfSection title="Cliente e condições" minPresenceAhead={150}>
-          <View style={resumidaStyles.leadGrid} wrap={false}>
-            <View style={resumidaStyles.leadClient}>
-              <ClientDetails snapshot={snapshot} />
-            </View>
-            <View style={[pdfStyles.card, resumidaStyles.leadMetadata]}>
-              <QuoteMetadata snapshot={snapshot} />
-            </View>
-          </View>
-          <TermsStrip snapshot={snapshot} />
-        </PdfSection>
-
-        <PdfSection title="Itens do orçamento" minPresenceAhead={118}>
-          <View style={resumidaStyles.itemsCard}>
-            <View style={resumidaStyles.itemHeader} wrap={false}>
-              <Text style={resumidaStyles.itemImageColumn}>Imagem</Text>
-              <Text style={resumidaStyles.itemDescriptionColumn}>Produto</Text>
-              <Text style={resumidaStyles.itemValueColumn}>Valores fornecidos</Text>
-            </View>
-            {snapshot.items.map((item) => (
-              <CompactProductRow key={item.lineId} item={item} />
-            ))}
-          </View>
-        </PdfSection>
-
-        <PdfSection title="Fechamento" minPresenceAhead={190}>
-          <View style={resumidaStyles.summaryGrid}>
-            {snapshot.notes ? (
-              <View style={resumidaStyles.notesColumn}>
-                <View style={resumidaStyles.notesCard}>
-                  <Text style={pdfStyles.metadataLabel}>Observações</Text>
-                  <Text>{snapshot.notes}</Text>
-                </View>
+        <View style={resumidaStyles.bodyRhythm}>
+          <PdfSection title="Cliente e condições" minPresenceAhead={150}>
+            <View style={resumidaStyles.leadGrid} wrap={false}>
+              <View style={resumidaStyles.leadClient}>
+                <ClientDetails snapshot={snapshot} />
               </View>
-            ) : null}
-            <ResumidaFinancialSummary snapshot={snapshot} />
-          </View>
-        </PdfSection>
+              <View style={[pdfStyles.card, resumidaStyles.leadMetadata]}>
+                <QuoteMetadata snapshot={snapshot} />
+              </View>
+            </View>
+            <TermsStrip snapshot={snapshot} />
+          </PdfSection>
 
-        {snapshot.signatures.length > 0 ? (
-          <PdfSection title="Assinaturas" minPresenceAhead={112}>
-            <View style={pdfStyles.signatures} wrap={false}>
-              {snapshot.signatures.map((signature) => (
-                <SignatureBlock key={signature.label} signature={signature} />
+          <PdfSection title="Itens do orçamento" minPresenceAhead={118}>
+            <View style={resumidaStyles.itemsCard}>
+              <View style={resumidaStyles.itemHeader} wrap={false}>
+                <Text style={resumidaStyles.itemImageColumn}>Imagem</Text>
+                <Text style={resumidaStyles.itemDescriptionColumn}>Produto</Text>
+                <Text style={resumidaStyles.itemValueColumn}>Valores fornecidos</Text>
+              </View>
+              {snapshot.items.map((item) => (
+                <CompactProductRow key={item.lineId} item={item} />
               ))}
             </View>
           </PdfSection>
-        ) : null}
+
+          <PdfSection title="Fechamento" minPresenceAhead={190}>
+            <View style={resumidaStyles.summaryGrid}>
+              {snapshot.notes ? (
+                <View style={resumidaStyles.notesColumn}>
+                  <View style={resumidaStyles.notesCard}>
+                    <Text style={pdfStyles.metadataLabel}>Observações</Text>
+                    <Text>{snapshot.notes}</Text>
+                  </View>
+                </View>
+              ) : null}
+              <ResumidaFinancialSummary snapshot={snapshot} />
+            </View>
+          </PdfSection>
+
+          {snapshot.signatures.length > 0 ? (
+            <PdfSection title="Assinaturas" minPresenceAhead={112}>
+              <View style={pdfStyles.signatures} wrap={false}>
+                {snapshot.signatures.map((signature) => (
+                  <SignatureBlock key={signature.label} signature={signature} />
+                ))}
+              </View>
+            </PdfSection>
+          ) : null}
+        </View>
       </Page>
     </Document>
   )

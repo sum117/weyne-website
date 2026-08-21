@@ -400,10 +400,12 @@ export function quoteRecalculationMutationOptions(
     mutationFn: (input: QuoteRecalculationInput) =>
       service.recalculateQuote(input),
     onSuccess: async (result) => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: quoteDataKeys.quote(result.quoteId) }),
-        queryClient.invalidateQueries({ queryKey: quoteDataKeys.catalogs() }),
-      ])
+      // Recalculation reads catalog data but never mutates products, prices,
+      // or facets, so only this quote's pricing projection goes stale.
+      // Invalidating `catalogs()` here would refetch every cached page.
+      await queryClient.invalidateQueries({
+        queryKey: quoteDataKeys.quote(result.quoteId),
+      })
     },
   })
 }

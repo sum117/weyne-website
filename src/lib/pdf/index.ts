@@ -34,6 +34,11 @@ export {
   renderResumidaQuotePdf,
   type ResumidaQuotePdfDocumentProps,
 } from './resumida.server'
+export {
+  ComercialQuotePdfDocument,
+  renderComercialQuotePdf,
+  type ComercialQuotePdfDocumentProps,
+} from './comercial.server'
 export type {
   QuotePdfBrandingSnapshot,
   QuotePdfClientSnapshot,

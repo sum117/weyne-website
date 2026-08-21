@@ -8,6 +8,8 @@ import {
   type QuotePdfTemplateIdentity,
 } from './pdf-artifacts.server'
 
+export type { QuotePdfArtifact } from './pdf-artifacts.server'
+
 export type QuotePdfDeliveryRole = 'admin' | 'representative' | 'read_only'
 
 export interface QuotePdfDeliveryActor {

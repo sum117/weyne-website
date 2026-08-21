@@ -176,6 +176,69 @@ describe('quote catalog and pricing data integration', () => {
     })
   })
 
+  it('invalidates only the recalculated quote, leaving cached catalog pages fresh', async () => {
+    const serverResult = {
+      quoteId: 'quote-1',
+      version: '13',
+      lines: [],
+      totals: {
+        subtotalAmount: '0.00',
+        discountAmount: '0.00',
+        taxAmount: '0.00',
+        freightAmount: '0.00',
+        grandTotalAmount: '0.00',
+      },
+    } as const
+    const recalculateQuote = vi.fn(async () => serverResult)
+    const service = { recalculateQuote } as unknown as QuoteDataService
+    const queryClient = new QueryClient()
+    const catalogRequest = { priceListId: 'list-1', limit: 20 } as const
+    const catalogKey = quoteCatalogQueryOptions(service, catalogRequest).queryKey
+    const catalogData = {
+      items: [],
+      facets: { industries: [], brands: [], categories: [] },
+      pageInfo: { nextCursor: null, hasNextPage: false },
+      selectedPriceList: {
+        id: 'list-1',
+        key: 'PRICE_1' as const,
+        displayName: 'Preço 1',
+      },
+      availablePriceLists: [],
+      defaultPriceListId: 'list-1',
+    } as const
+    // Seed cached read models without fetching: the mock service only
+    // implements the mutation under test.
+    const quoteKey = quotePricingQueryOptions(service, 'quote-1').queryKey
+    queryClient.setQueryData(quoteKey, {
+      quoteId: 'quote-1',
+      version: '12',
+      selectedPriceList: {
+        id: 'list-1',
+        key: 'PRICE_1' as const,
+        displayName: 'Preço 1',
+      },
+      lines: [],
+    })
+    queryClient.setQueryData(catalogKey, catalogData)
+
+    const options = quoteRecalculationMutationOptions(service, queryClient)
+    await options.onSuccess?.(
+      serverResult,
+      {} as never,
+      undefined as never,
+      {} as never,
+    )
+
+    // The quote's pricing projection is stale and must refetch…
+    const quoteState = queryClient.getQueryState(quoteKey)
+    expect(quoteState?.isInvalidated).toBe(true)
+
+    // …while the untouched catalog page stays fresh — no refetch storm.
+    const catalogState = queryClient.getQueryState(catalogKey)
+    expect(catalogState?.isInvalidated).toBe(false)
+    expect(queryClient.getQueryData(catalogKey)).toEqual(catalogData)
+  })
+
   it('loads saved lines and their current sources in one batched quote request', async () => {
     const line = {
       lineId: 'line-archived',
