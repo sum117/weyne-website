@@ -1,3 +1,4 @@
+import { logUnexpectedError } from '@/lib/server/log-redaction'
 import { createServerFn } from '@tanstack/react-start'
 import type { z } from 'zod'
 import { getDatabase } from '@/lib/db/database.server'
@@ -121,7 +122,7 @@ async function getReferenceRecordService(): Promise<ReferenceRecordServiceContra
 const referenceRecordOperations = createReferenceRecordOperations({
   getService: getReferenceRecordService,
   logUnexpectedError: (cause) => {
-    console.error('Reference record server operation failed.', cause)
+    logUnexpectedError('reference-record.server', cause)
   },
 })
 

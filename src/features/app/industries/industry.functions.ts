@@ -1,3 +1,4 @@
+import { logUnexpectedError } from '@/lib/server/log-redaction'
 import { createServerFn } from '@tanstack/react-start'
 import { createPostgresIndustryPersistence } from '@/domain/industries/repository.server'
 import {
@@ -153,7 +154,7 @@ async function getIndustryMutationService(): Promise<IndustryMutationServiceCont
 const industryMutationOperations = createIndustryMutationOperations({
   getService: getIndustryMutationService,
   logUnexpectedError: (cause) => {
-    console.error('Industry mutation server operation failed.', cause)
+    logUnexpectedError('industry.server', cause)
   },
 })
 

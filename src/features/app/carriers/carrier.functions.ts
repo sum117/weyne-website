@@ -1,3 +1,4 @@
+import { logUnexpectedError } from '@/lib/server/log-redaction'
 import { createServerFn } from '@tanstack/react-start'
 import { createCarrierPersistence } from '@/domain/carriers/repository.server'
 import {
@@ -167,7 +168,7 @@ async function getCarrierService(): Promise<CarrierServiceContract> {
 const carrierOperations = createCarrierOperations({
   getService: getCarrierService,
   logUnexpectedError: (cause) => {
-    console.error('Carrier server operation failed.', cause)
+    logUnexpectedError('carrier.server', cause)
   },
 })
 
