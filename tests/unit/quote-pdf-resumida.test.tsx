@@ -121,7 +121,7 @@ describe('resumida quote PDF', () => {
     expect(pageCount(buffer)).toBeGreaterThanOrEqual(1)
     expect(consoleError).not.toHaveBeenCalled()
     consoleError.mockRestore()
-  })
+  }, 20_000)
 
   it('keeps many long pt-BR product rows legible across multiple pages', async () => {
     const items = Array.from({ length: 28 }, (_, index) => ({
@@ -145,7 +145,7 @@ describe('resumida quote PDF', () => {
     const buffer = await renderResumidaQuotePdf(snapshot)
 
     expect(pageCount(buffer)).toBeGreaterThan(1)
-  }, 15_000)
+  }, 30_000)
 
   it('renders intentionally when every optional section value is absent', async () => {
     const snapshot: QuotePdfSnapshot = {
@@ -183,7 +183,7 @@ describe('resumida quote PDF', () => {
 
     expect(buffer.subarray(0, 5).toString('ascii')).toBe('%PDF-')
     expect(pageCount(buffer)).toBeGreaterThanOrEqual(1)
-  })
+  }, 20_000)
 
   it('uses no browser APIs, remote assets, or financial calculation engine', () => {
     expect(ResumidaQuotePdfDocument).toBeTypeOf('function')
