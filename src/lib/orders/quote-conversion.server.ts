@@ -6,6 +6,8 @@ import type {
   OrderClientSnapshot,
   PersistedOrder,
 } from '@/lib/orders/repository.server'
+import { buildOrderCommissionFacts } from '@/lib/orders/commission-facts.server'
+import { verifyOrderTotals } from '@/lib/orders/total-verification.server'
 import type { QuoteActor, QuoteStatus } from '@/lib/quotes/quote-repository.server'
 
 export type QuoteConversionSnapshot = Readonly<{
@@ -113,12 +115,42 @@ export function createPostgresQuoteConversionService(options: {
             `Cannot convert quote from ${quote.status}`,
           )
         }
-        if (existingOrder) throw new QuoteConversionError('SNAPSHOT_INTEGRITY_ERROR')
+        if (existingOrder) {
+          // A committed order already exists for this quote. Regardless of the
+          // quote's visible status (a racing transaction may not yet have
+          // flipped it to 'converted'), resolve to the canonical order instead
+          // of failing — this is the unique-conflict resolution path.
+          return existingOrder
+        }
 
         const orderSnapshot = parseOrderSnapshot(quote)
+        const totalProblems = verifyOrderTotals(orderSnapshot)
+        if (totalProblems.length > 0) {
+          throw new QuoteConversionError(
+            'SNAPSHOT_INTEGRITY_ERROR',
+            `Stored quote totals failed server-side verification: ${totalProblems.join('; ')}`,
+          )
+        }
+        // Conversion-time commission snapshot: the pure calculator resolves
+        // precedence and value once; the facts frozen here are what the
+        // order reports forever, regardless of later rule edits.
+        const commissionFacts = buildOrderCommissionFacts(
+          orderSnapshot.lines.map((line) => ({
+            sourceQuoteLineId: line.sourceQuoteLineId,
+            lineNumber: line.lineNumber,
+            industryId: line.product.industryId,
+            grossAmount: line.grossAmount,
+            perItemDiscountAmount: line.perItemDiscountAmount,
+            allocatedGeneralDiscountAmount: line.allocatedGeneralDiscountAmount,
+            commissionSource: line.commissionSource,
+            commissionRate: line.commissionRate,
+            commissionBasisAmount: line.commissionBasisAmount,
+            commissionAmount: line.commissionAmount,
+          })),
+        )
         await reserveCommand(tx, { commandId, payloadHash, quoteId: quote.id })
 
-        const order = await createOrder(tx, orderSnapshot, input.actor.id)
+        const order = await createOrder(tx, orderSnapshot, commissionFacts, input.actor.id)
 
         const [updated] = await tx<QuoteRow[]>`
           UPDATE quotes
@@ -188,6 +220,7 @@ export function createPostgresQuoteConversionService(options: {
 async function createOrder(
   tx: Sql,
   snapshot: NewOrderSnapshot,
+  commissionFacts: ReturnType<typeof buildOrderCommissionFacts>,
   actorId: string,
 ): Promise<PersistedOrder> {
   const [clock] = await tx<Array<{ occurredAt: Date; year: number }>>`
@@ -251,7 +284,9 @@ async function createOrder(
   `
   if (!created) throw new QuoteConversionError('SNAPSHOT_INTEGRITY_ERROR')
 
-  for (const line of snapshot.lines) {
+  for (const [index, line] of snapshot.lines.entries()) {
+    const facts = commissionFacts.lines[index]
+    if (!facts) throw new QuoteConversionError('SNAPSHOT_INTEGRITY_ERROR')
     const [createdLine] = await tx<Array<{ id: string }>>`
       INSERT INTO order_lines (
         order_id, source_quote_line_id, line_number, product_id,
@@ -263,7 +298,8 @@ async function createOrder(
         net_before_general_discount_amount, allocated_general_discount_amount,
         net_after_discounts_amount, ipi_rate, ipi_basis_amount, ipi_amount,
         configured_tax_amount, freight_amount, line_total_amount, commission_source,
-        commission_rate, commission_basis_amount, commission_amount, created_at
+        commission_rate, commission_basis_amount, commission_amount,
+        commission_industry_id, commission_provenance, created_at
       ) VALUES (
         ${created.id}, ${line.sourceQuoteLineId}, ${line.lineNumber}, ${line.product.id},
         ${line.product.industryId}, ${line.product.industryName},
@@ -277,7 +313,7 @@ async function createOrder(
         ${line.netAfterDiscountsAmount}, ${line.ipiRate}, ${line.ipiBasisAmount}, ${line.ipiAmount},
         ${line.configuredTaxAmount}, ${line.freightAmount}, ${line.lineTotalAmount},
         ${line.commissionSource}, ${line.commissionRate}, ${line.commissionBasisAmount},
-        ${line.commissionAmount}, ${clock.occurredAt}
+        ${line.commissionAmount}, ${facts.industryId}, ${facts.provenance}, ${clock.occurredAt}
       ) RETURNING id
     `
     if (!createdLine) throw new QuoteConversionError('SNAPSHOT_INTEGRITY_ERROR')

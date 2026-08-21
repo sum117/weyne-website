@@ -186,6 +186,9 @@ export const orderLines = pgTable(
     commissionRate: rate('commission_rate'),
     commissionBasisAmount: amount('commission_basis_amount').notNull(),
     commissionAmount: amount('commission_amount').notNull(),
+    // Immutable conversion-time provenance for the commission facts above.
+    commissionIndustryId: uuid('commission_industry_id'),
+    commissionProvenance: text('commission_provenance'),
     createdAt: auditTimestamp('created_at'),
   },
   (table) => [
@@ -206,6 +209,17 @@ export const orderLines = pgTable(
         AND ${table.commissionSource} IN ('product_override', 'industry_default', 'none')
         AND ((${table.commissionSource} = 'none' AND ${table.commissionRate} IS NULL)
           OR (${table.commissionSource} <> 'none' AND ${table.commissionRate} BETWEEN 0 AND 100))`,
+    ),
+    check(
+      'order_lines_commission_facts_ck',
+      sql`(${table.commissionSource} = 'none' AND ${table.commissionAmount} = 0)
+        OR (${table.commissionSource} <> 'none'
+          AND ${table.commissionBasisAmount} >= 0 AND ${table.commissionAmount} >= 0)`,
+    ),
+    check(
+      'order_lines_commission_provenance_ck',
+      sql`${table.commissionProvenance} IS NULL OR ${table.commissionProvenance} IN (
+        'product_override_snapshot', 'industry_default_snapshot', 'no_rate_configured')`,
     ),
     check(
       'order_lines_amounts_ck',

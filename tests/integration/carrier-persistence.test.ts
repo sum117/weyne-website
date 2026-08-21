@@ -26,6 +26,7 @@ beforeAll(async () => {
       '0002_quote_persistence.sql',
       '0004_carriers.sql',
       '0004_order_persistence.sql',
+      '0010_order_line_commission_facts.sql',
       '0007_carrier_order_reference.sql',
       '0009_carrier_audit.sql',
     ],

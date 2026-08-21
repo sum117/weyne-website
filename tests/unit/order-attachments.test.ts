@@ -106,6 +106,28 @@ describe('secure order attachment service', () => {
     ).rejects.toMatchObject({ code: 'FILE_SIGNATURE_MISMATCH' })
   })
 
+  it('rejects malicious filenames regardless of file contents', async () => {
+    const { service, storage } = setup()
+
+    const hostileNames = [
+      '../pedido-cliente.pdf',
+      'pedido/../../cliente.pdf',
+      'pedido\\cliente.pdf',
+      '.',
+      '..',
+      'pedido\x00cliente.pdf',
+      'pedido\ncliente.pdf',
+      `${'x'.repeat(256)}.pdf`,
+    ]
+    for (const originalFilename of hostileNames) {
+      await expect(
+        service.upload({ ...upload(), originalFilename }),
+      ).rejects.toMatchObject({ code: 'INVALID_REQUEST' })
+    }
+
+    expect(storage.snapshot()).toEqual([])
+  })
+
   it('rejects oversized files and the configured active-file count bound', async () => {
     const tooSmall = setup({ maxSizeBytes: pdf.byteLength - 1 })
     await expect(tooSmall.service.upload(upload())).rejects.toMatchObject({
@@ -148,6 +170,28 @@ describe('secure order attachment service', () => {
     await expect(
       service.upload({ ...upload(), label: 'Outro rótulo' }),
     ).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' })
+  })
+
+  it('rejects uploads whose declared checksum does not match the bytes', async () => {
+    const { service, storage } = setup()
+
+    const wrongChecksum = createHash('sha256')
+      .update('different bytes entirely')
+      .digest('base64')
+    await expect(
+      service.upload({ ...upload(), declaredChecksumSha256: wrongChecksum }),
+    ).rejects.toMatchObject({ code: 'CHECKSUM_MISMATCH' })
+
+    // Nothing leaked into storage: rejection happens before any put.
+    expect(storage.snapshot()).toEqual([])
+  })
+
+  it('rejects a declared size that disagrees with the actual byte length', async () => {
+    const { service } = setup()
+
+    await expect(
+      service.upload({ ...upload(), declaredSizeBytes: pdf.byteLength + 1 }),
+    ).rejects.toMatchObject({ code: 'DECLARATION_MISMATCH' })
   })
 
   it('lists only active metadata after order-level download authorization', async () => {

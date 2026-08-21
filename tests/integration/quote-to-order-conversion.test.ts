@@ -22,6 +22,7 @@ beforeAll(async () => {
       '0002_quote_persistence.sql',
       '0004_order_persistence.sql',
       '0005_quote_to_order_conversion.sql',
+      '0010_order_line_commission_facts.sql',
     ],
   })
 })
@@ -360,6 +361,329 @@ describe('approved quote to order conversion on PostgreSQL', () => {
       actor,
     })
     expect(recovered.number).toBe('PED-2026-000001')
+  })
+
+  it('rejects conversion when stored totals fail server-side recalculation, leaving the quote intact', async () => {
+    const tampered: QuoteConversionSnapshot = {
+      ...snapshot(),
+      totals: { ...snapshot().totals, grandTotalAmount: '999.990000' },
+    }
+    const approved = await createApprovedQuote(tampered)
+    const service = createPostgresQuoteConversionService({
+      sql: harness.sql,
+      schemaName: harness.schemaName,
+    })
+
+    await expect(
+      service.convert({ quoteId: approved.id, commandId: 'tampered-totals', actor }),
+    ).rejects.toMatchObject({ code: 'SNAPSHOT_INTEGRITY_ERROR' })
+
+    const [intact] = await harness.sql<Array<{ status: string; orders: string }>>`
+      SELECT q.status,
+        (SELECT count(*)::text FROM orders WHERE source_quote_id = q.id) AS orders
+      FROM quotes q WHERE q.id = ${approved.id}
+    `
+    expect(intact).toEqual({ status: 'approved', orders: '0' })
+  })
+
+  it('recalculates totals from snapshot lines without consulting catalog prices', async () => {
+    const priced = snapshot()
+    // Quoted values deliberately differ from any catalog truth: fidelity to
+    // the approved snapshot is what matters, not agreement with the catalog.
+    const approved = await createApprovedQuote(priced)
+    const service = createPostgresQuoteConversionService({
+      sql: harness.sql,
+      schemaName: harness.schemaName,
+    })
+
+    const order = await service.convert({
+      quoteId: approved.id,
+      commandId: 'snapshot-fidelity',
+      actor,
+    })
+    const [persisted] = await harness.sql<
+      Array<{
+        grossItemsAmount: string
+        perItemDiscountAmount: string
+        netItemsAmount: string
+        generalDiscountRate: string
+        generalDiscountAmount: string
+        netAfterDiscountsAmount: string
+        ipiAmount: string
+        configuredTaxAmount: string
+        freightAmount: string
+        grandTotalAmount: string
+        commissionBasisAmount: string
+        commissionAmount: string
+        quantity: string
+        unitPriceAmount: string
+        ipiRate: string
+        commissionRate: string
+        taxRate: string
+        taxBasisAmount: string
+        allocatedGeneralDiscountAmount: string
+      }>
+    >`
+      SELECT o.gross_items_amount::text AS "grossItemsAmount",
+             o.per_item_discount_amount::text AS "perItemDiscountAmount",
+             o.net_items_amount::text AS "netItemsAmount",
+             o.general_discount_rate::text AS "generalDiscountRate",
+             o.general_discount_amount::text AS "generalDiscountAmount",
+             o.net_after_discounts_amount::text AS "netAfterDiscountsAmount",
+             o.ipi_amount::text AS "ipiAmount",
+             o.configured_tax_amount::text AS "configuredTaxAmount",
+             o.freight_amount::text AS "freightAmount",
+             o.grand_total_amount::text AS "grandTotalAmount",
+             o.commission_basis_amount::text AS "commissionBasisAmount",
+             o.commission_amount::text AS "commissionAmount",
+             ol.quantity::text AS quantity,
+             ol.unit_price_amount::text AS "unitPriceAmount",
+             ol.ipi_rate::text AS "ipiRate",
+             ol.commission_rate::text AS "commissionRate",
+             olt.rate::text AS "taxRate",
+             olt.basis_amount::text AS "taxBasisAmount",
+             ol.allocated_general_discount_amount::text AS "allocatedGeneralDiscountAmount"
+      FROM orders o
+      JOIN order_lines ol ON ol.order_id = o.id
+      JOIN order_line_taxes olt ON olt.order_line_id = ol.id
+      WHERE o.id = ${order.id}
+    `
+
+    // Every header total equals the stored snapshot exactly.
+    expect(persisted).toEqual(
+      expect.objectContaining({
+        grossItemsAmount: priced.totals.grossItemsAmount,
+        perItemDiscountAmount: priced.totals.perItemDiscountAmount,
+        netItemsAmount: priced.totals.netItemsAmount,
+        generalDiscountRate: priced.totals.generalDiscountRate,
+        generalDiscountAmount: priced.totals.generalDiscountAmount,
+        netAfterDiscountsAmount: priced.totals.netAfterDiscountsAmount,
+        ipiAmount: priced.totals.ipiAmount,
+        configuredTaxAmount: priced.totals.configuredTaxAmount,
+        freightAmount: priced.totals.freightAmount,
+        grandTotalAmount: priced.totals.grandTotalAmount,
+        commissionBasisAmount: priced.totals.commissionBasisAmount,
+        commissionAmount: priced.totals.commissionAmount,
+        quantity: priced.lines[0]!.quantity,
+        unitPriceAmount: priced.lines[0]!.unitPrice.amount,
+        ipiRate: priced.lines[0]!.ipiRate,
+        commissionRate: priced.lines[0]!.commissionRate,
+        taxRate: priced.lines[0]!.configuredTaxes[0]!.rate,
+        taxBasisAmount: priced.lines[0]!.configuredTaxes[0]!.basisAmount,
+        allocatedGeneralDiscountAmount:
+          priced.lines[0]!.allocatedGeneralDiscountAmount,
+      }),
+    )
+  })
+
+  it('resolves a unique-conflict race to the canonical order instead of failing', async () => {
+    const approved = await createApprovedQuote()
+    const service = createPostgresQuoteConversionService({
+      sql: harness.sql,
+      schemaName: harness.schemaName,
+    })
+    const first = await service.convert({
+      quoteId: approved.id,
+      commandId: 'race-first',
+      actor,
+    })
+
+    // Simulate the race window: an order exists but the quote's converted
+    // marker was not yet visible to the second transaction (status forced
+    // back to 'approved' after the fact).
+    await harness.sql`UPDATE quotes SET status = 'approved' WHERE id = ${approved.id}`
+    const raced = await service.convert({
+      quoteId: approved.id,
+      commandId: 'race-second',
+      actor,
+    })
+
+    expect(raced.id).toBe(first.id)
+    expect(raced.number).toBe(first.number)
+
+    const [counts] = await harness.sql<Array<{ orders: string; status: string }>>`
+      SELECT (SELECT count(*)::text FROM orders WHERE source_quote_id = ${approved.id}) AS orders,
+             (SELECT status FROM quotes WHERE id = ${approved.id}) AS status
+    `
+    expect(counts).toEqual({ orders: '1', status: 'approved' })
+  })
+
+  it('persists immutable commission facts with provenance and survives rule edits', async () => {
+    const priced = snapshot()
+    const approved = await createApprovedQuote(priced)
+    const service = createPostgresQuoteConversionService({
+      sql: harness.sql,
+      schemaName: harness.schemaName,
+    })
+
+    const order = await service.convert({
+      quoteId: approved.id,
+      commandId: 'commission-facts',
+      actor,
+    })
+
+    // The conversion-time snapshot records the selected source, rate, basis,
+    // value, and the provenance of the selected rate.
+    const [facts] = await harness.sql<
+      Array<{
+        commissionSource: string
+        commissionRate: string
+        commissionBasisAmount: string
+        commissionAmount: string
+        commissionIndustryId: string | null
+        commissionProvenance: string
+      }>
+    >`
+      SELECT commission_source AS "commissionSource",
+             commission_rate::text AS "commissionRate",
+             commission_basis_amount::text AS "commissionBasisAmount",
+             commission_amount::text AS "commissionAmount",
+             commission_industry_id::text AS "commissionIndustryId",
+             commission_provenance AS "commissionProvenance"
+      FROM order_lines WHERE order_id = ${order.id}
+    `
+    const line = priced.lines[0]!
+    expect(facts).toEqual({
+      commissionSource: line.commissionSource,
+      commissionRate: line.commissionRate,
+      commissionBasisAmount: line.commissionBasisAmount,
+      commissionAmount: line.commissionAmount,
+      commissionIndustryId: line.product.industryId,
+      commissionProvenance: 'product_override_snapshot',
+    })
+
+    // Later edits to the quote's stored rules cannot recalculate or silently
+    // change a converted order's frozen facts.
+    await harness.sql`
+      UPDATE quotes
+      SET commercial_snapshot = ${JSON.stringify({
+        ...priced,
+        lines: [
+          {
+            ...line,
+            commissionSource: 'industry_default',
+            commissionRate: '99.000000',
+            commissionAmount: '84585.000000',
+          },
+        ],
+        totals: { ...priced.totals, commissionAmount: '84585.000000' },
+      })}::jsonb
+      WHERE id = ${approved.id}
+    `
+
+    const [unchanged] = await harness.sql<
+      Array<{
+        orders: string
+        commissionRate: string
+        commissionAmount: string
+        commissionProvenance: string | null
+      }>
+    >`
+      SELECT (SELECT count(*)::text FROM orders) AS orders,
+             ol.commission_rate::text AS "commissionRate",
+             ol.commission_amount::text AS "commissionAmount",
+             ol.commission_provenance AS "commissionProvenance"
+      FROM order_lines ol WHERE ol.order_id = ${order.id}
+    `
+    expect(unchanged).toEqual({
+      orders: '1',
+      commissionRate: line.commissionRate,
+      commissionAmount: line.commissionAmount,
+      commissionProvenance: 'product_override_snapshot',
+    })
+  })
+
+  it('persists per-line commission precedence across mixed sources', async () => {
+    const first = snapshot()
+    // Second line carries no overrides: it falls through to its industry
+    // default rate instead of the first line's product override.
+    const industryLine = {
+      ...first.lines[0]!,
+      sourceQuoteLineId: randomUUID(),
+      lineNumber: 2,
+      product: { ...first.lines[0]!.product, id: randomUUID() },
+      quantity: '1.000000',
+      unitPrice: { ...first.lines[0]!.unitPrice, amount: '50.000000' },
+      grossAmount: '50.000000',
+      perItemDiscountRate: '0.000000',
+      perItemDiscountAmount: '0.000000',
+      netBeforeGeneralDiscountAmount: '50.000000',
+      allocatedGeneralDiscountAmount: '0.000000',
+      netAfterDiscountsAmount: '50.000000',
+      ipiRate: '0.000000',
+      ipiBasisAmount: '50.000000',
+      ipiAmount: '0.000000',
+      configuredTaxAmount: '0.000000',
+      freightAmount: '0.000000',
+      lineTotalAmount: '50.000000',
+      commissionSource: 'industry_default' as const,
+      commissionRate: '5.000000',
+      commissionBasisAmount: '50.000000',
+      commissionAmount: '2.500000',
+      configuredTaxes: [
+        { code: 'ICMS', rate: '0.000000', basisAmount: '50.000000', amount: '0.000000' },
+      ],
+    }
+    const priced: QuoteConversionSnapshot = {
+      ...first,
+      totals: {
+        ...first.totals,
+        grossItemsAmount: '150.000000',
+        perItemDiscountAmount: '10.000000',
+        netItemsAmount: '140.000000',
+        netAfterDiscountsAmount: '135.500000',
+        ipiAmount: '8.550000',
+        configuredTaxAmount: '15.390000',
+        grandTotalAmount: '169.440000',
+        commissionBasisAmount: '135.500000',
+        commissionAmount: '5.065000',
+      },
+      lines: [first.lines[0]!, industryLine],
+    }
+    const approved = await createApprovedQuote(priced)
+    const service = createPostgresQuoteConversionService({
+      sql: harness.sql,
+      schemaName: harness.schemaName,
+    })
+
+    const order = await service.convert({
+      quoteId: approved.id,
+      commandId: 'commission-precedence',
+      actor,
+    })
+
+    const facts = await harness.sql<
+      Array<{
+        lineNumber: string
+        commissionSource: string
+        commissionRate: string
+        commissionProvenance: string
+        commissionIndustryId: string | null
+      }>
+    >`
+      SELECT line_number::text AS "lineNumber",
+             commission_source AS "commissionSource",
+             commission_rate::text AS "commissionRate",
+             commission_provenance AS "commissionProvenance",
+             commission_industry_id::text AS "commissionIndustryId"
+      FROM order_lines WHERE order_id = ${order.id} ORDER BY line_number
+    `
+    expect(facts).toEqual([
+      {
+        lineNumber: '1',
+        commissionSource: 'product_override',
+        commissionRate: '3.000000',
+        commissionProvenance: 'product_override_snapshot',
+        commissionIndustryId: first.lines[0]!.product.industryId,
+      },
+      {
+        lineNumber: '2',
+        commissionSource: 'industry_default',
+        commissionRate: '5.000000',
+        commissionProvenance: 'industry_default_snapshot',
+        commissionIndustryId: industryLine.product.industryId,
+      },
+    ])
   })
 
   it('rejects invalid states, unauthorized actors, and reused command ids without effects', async () => {

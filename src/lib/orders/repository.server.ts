@@ -82,6 +82,12 @@ export interface NewOrderLineSnapshot {
   readonly commissionRate: DecimalString | null
   readonly commissionBasisAmount: DecimalString
   readonly commissionAmount: DecimalString
+  /** Frozen conversion-time provenance; optional for legacy snapshot producers. */
+  readonly commissionIndustryId?: DecimalString
+  readonly commissionProvenance?:
+    | 'product_override_snapshot'
+    | 'industry_default_snapshot'
+    | 'no_rate_configured'
   readonly configuredTaxes: readonly Readonly<OrderConfiguredTaxSnapshot>[]
 }
 
@@ -147,6 +153,7 @@ type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
 export interface OrderTransaction {
   createOrder(snapshot: NewOrderSnapshot, audit: OrderAuditMetadata): Promise<PersistedOrder>
   findBySourceQuote(sourceQuoteId: string): Promise<PersistedOrder | null>
+  findById(orderId: string): Promise<PersistedOrder | null>
   transitionState(input: TransitionOrderStateInput): Promise<PersistedOrder>
 }
 
@@ -251,6 +258,8 @@ function createOrderTransaction(transaction: Transaction): OrderTransaction {
             commissionRate: line.commissionRate,
             commissionBasisAmount: line.commissionBasisAmount,
             commissionAmount: line.commissionAmount,
+            commissionIndustryId: line.commissionIndustryId ?? null,
+            commissionProvenance: line.commissionProvenance ?? null,
             createdAt: occurredAt,
           })
           .returning({ id: orderLines.id })
@@ -289,6 +298,16 @@ function createOrderTransaction(transaction: Transaction): OrderTransaction {
         .from(orders)
         .where(eq(orders.sourceQuoteId, sourceQuoteId))
         .limit(1)
+      return order ? mapOrder(order) : null
+    },
+
+    async findById(orderId: string) {
+      const [order] = await transaction
+        .select()
+        .from(orders)
+        .where(eq(orders.id, orderId))
+        .limit(1)
+        .for('update')
       return order ? mapOrder(order) : null
     },
 
