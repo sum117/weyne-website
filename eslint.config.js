@@ -61,4 +61,15 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Privacy-safe logging (threat model T10/T11): application code must route
+    // every log line through src/lib/server/log-redaction.ts so raw errors,
+    // headers, cookies, and tokens never reach the console. CLI scripts,
+    // spikes, and tests keep direct console access.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/lib/server/log-redaction.ts'],
+    rules: {
+      'no-console': 'error',
+    },
+  },
 )

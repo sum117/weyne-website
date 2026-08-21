@@ -5,6 +5,7 @@ import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import postgres from 'postgres'
 import { closeDatabase, getDatabase, type Database } from './database.server'
 import { parseDatabaseConfig } from './config.server'
+import { logStructuredEvent } from '@/lib/server/log-redaction'
 
 const MIGRATION_FILE_PATTERN = /^(\d{4})_([a-z0-9_]+)\.sql$/
 const MIGRATION_HEADER_PATTERN = /^-- weyne:migration compatibility=(expand|contract) previous-app-compatible=(true|false)$/m
@@ -186,7 +187,7 @@ export async function migrateDatabase(
   const run = createSafeMigrationRunner({
     openSession: () => openPostgresMigrationSession(config.url),
     cleanupRelease: process.env.MIGRATION_CLEANUP_RELEASE,
-    logger: (entry) => console.info(JSON.stringify({ ...entry, timestamp: new Date().toISOString() })),
+    logger: (entry) => logStructuredEvent({ kind: 'migration', ...entry }),
   })
 
   await run(migrationsFolder)
