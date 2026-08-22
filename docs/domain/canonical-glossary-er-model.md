@@ -6,10 +6,12 @@ Idioma de negócio: pt-BR. Nomes de tabela, coluna, constraint e enum abaixo sã
 
 ## 1. Escopo e fonte de verdade
 
-O schema canônico é o conjunto de duas migrations:
+O schema canônico é o conjunto de quatro migrations:
 
 - `drizzle/canonical/0000_canonical_schema.sql`: enums, 25 tabelas, chaves, FKs, checks e índices;
-- `drizzle/canonical/0001_canonical_invariants.sql`: exclusões de vigência, triggers de append-only/arquivo, conjunto permanente de listas e paridade quote/order.
+- `drizzle/canonical/0001_canonical_invariants.sql`: exclusões de vigência, triggers de append-only/arquivo, conjunto permanente de listas e paridade quote/order;
+- `drizzle/canonical/0002_document_logo_assets.sql`: a 26ª tabela `document_logo_assets`, com o enum `document_logo_status` e o ciclo staged/active/purged do logotipo dos documentos;
+- `drizzle/canonical/0003_millisecond_timestamp_defaults.sql`: trunca todo default `timestamptz` para milissegundos e normaliza os valores já gravados.
 
 A declaração Drizzle correspondente é `src/lib/db/schema/canonical.ts`; `drizzle.config.ts` aponta para ela e para `drizzle/canonical`.
 
@@ -45,6 +47,7 @@ erDiagram
   users ||--o{ idempotency_records : "actor_user_id"
   users ||--o{ settings : "created/updated_by"
   users ||--o{ audit_events : "actor_user_id"
+  users ||--o{ document_logo_assets : "created/activated/purged_by"
 
   representatives o|--o{ customers : "responsible_representative_id"
   representatives ||--o{ quotes : "representative_id"
@@ -115,25 +118,25 @@ Tipos `timestamptz` abaixo são `timestamp with time zone`; `numeric(p,s)` é Po
 
 #### `users` (`users`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `name text NOT NULL`, `email text NOT NULL`, `email_verified boolean NOT NULL DEFAULT false`, `image text`, `role user_role NOT NULL`, `auth_subject text NOT NULL`, `disabled_at timestamptz`, `disabled_by_user_id uuid`, `created_at timestamptz NOT NULL DEFAULT now()`, `updated_at timestamptz NOT NULL DEFAULT now()`.
+`id uuid PK DEFAULT gen_random_uuid()`, `name text NOT NULL`, `email text NOT NULL`, `email_verified boolean NOT NULL DEFAULT false`, `image text`, `role user_role NOT NULL`, `auth_subject text NOT NULL`, `disabled_at timestamptz`, `disabled_by_user_id uuid`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `updated_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`.
 
 `role` é `admin | representative | read_only`. `email` é único por índice case-insensitive `users_email_uidx`; `auth_subject` é único por `users_auth_subject_uq`. `disabled_at` e `disabled_by_user_id` são ambos nulos ou ambos preenchidos.
 
 #### `sessions` (`sessions`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `token text NOT NULL`, `user_id uuid NOT NULL`, `expires_at timestamptz NOT NULL`, `ip_address text`, `user_agent text`, `created_at timestamptz NOT NULL DEFAULT now()`, `updated_at timestamptz NOT NULL DEFAULT now()`.
+`id uuid PK DEFAULT gen_random_uuid()`, `token text NOT NULL`, `user_id uuid NOT NULL`, `expires_at timestamptz NOT NULL`, `ip_address text`, `user_agent text`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `updated_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`.
 
 `token` é único (`sessions_token_uq`). FK `user_id` usa `ON DELETE CASCADE`, pois a sessão é material de autenticação e não autoria histórica.
 
 #### `accounts` (`accounts`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `account_id text NOT NULL`, `provider_id text NOT NULL`, `user_id uuid NOT NULL`, `access_token text`, `refresh_token text`, `id_token text`, `access_token_expires_at timestamptz`, `refresh_token_expires_at timestamptz`, `scope text`, `password text`, `created_at timestamptz NOT NULL DEFAULT now()`, `updated_at timestamptz NOT NULL DEFAULT now()`.
+`id uuid PK DEFAULT gen_random_uuid()`, `account_id text NOT NULL`, `provider_id text NOT NULL`, `user_id uuid NOT NULL`, `access_token text`, `refresh_token text`, `id_token text`, `access_token_expires_at timestamptz`, `refresh_token_expires_at timestamptz`, `scope text`, `password text`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `updated_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`.
 
 `(provider_id, account_id)` é único (`accounts_provider_account_uq`). FK `user_id` usa `ON DELETE CASCADE`.
 
 #### `verifications` (`verifications`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `identifier text NOT NULL`, `value text NOT NULL`, `expires_at timestamptz NOT NULL`, `created_at timestamptz NOT NULL DEFAULT now()`, `updated_at timestamptz NOT NULL DEFAULT now()`.
+`id uuid PK DEFAULT gen_random_uuid()`, `identifier text NOT NULL`, `value text NOT NULL`, `expires_at timestamptz NOT NULL`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `updated_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`.
 
 Há índice `verifications_identifier_idx`; não há FK para usuário.
 
@@ -173,7 +176,7 @@ As tabelas abaixo usam, quando indicado, o conjunto de auditoria: `created_at`, 
 
 #### `product_assets` (`product_assets`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `product_id uuid NOT NULL`, `kind product_asset_kind NOT NULL`, `original_name text NOT NULL`, `mime_type text NOT NULL`, `size_bytes bigint NOT NULL`, `storage_key text NOT NULL`, `checksum text NOT NULL`, `position integer`, `created_at timestamptz NOT NULL DEFAULT now()`, `created_by_user_id uuid NOT NULL`, `archived_at timestamptz`, `archived_by_user_id uuid`.
+`id uuid PK DEFAULT gen_random_uuid()`, `product_id uuid NOT NULL`, `kind product_asset_kind NOT NULL`, `original_name text NOT NULL`, `mime_type text NOT NULL`, `size_bytes bigint NOT NULL`, `storage_key text NOT NULL`, `checksum text NOT NULL`, `position integer`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `created_by_user_id uuid NOT NULL`, `archived_at timestamptz`, `archived_by_user_id uuid`.
 
 `kind` é `image | technical_sheet | safety_sheet`. `storage_key` é único (`product_assets_storage_key_uq`). Imagens ativas têm `position >= 0` e unicidade `(product_id, position)`; documentos não-imagem têm `position IS NULL` e no máximo um de cada kind por produto. Assets são arquivados, nunca hard-deleted.
 
@@ -181,19 +184,19 @@ As tabelas abaixo usam, quando indicado, o conjunto de auditoria: `created_at`, 
 
 #### `price_lists` (`price_lists`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `key price_list_key NOT NULL`, `display_name text NOT NULL`, `position smallint NOT NULL`, `created_at timestamptz NOT NULL DEFAULT now()`, `updated_at timestamptz NOT NULL DEFAULT now()`.
+`id uuid PK DEFAULT gen_random_uuid()`, `key price_list_key NOT NULL`, `display_name text NOT NULL`, `position smallint NOT NULL`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `updated_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`.
 
 `key` (`price_lists_key_uq`) e `position` (`price_lists_position_uq`) são únicos. O check `price_lists_key_position_ck` limita o par a `PRICE_1/1`, `PRICE_2/2`, `PRICE_3/3`, `PRICE_4/4`. A migration de invariantes protege o conjunto permanente: seed idempotente cria exatamente estas quatro rows com IDs estáveis: `00000000-0000-4000-8000-000000000001` (`PRICE_1`), `00000000-0000-4000-8000-000000000002` (`PRICE_2`), `00000000-0000-4000-8000-000000000003` (`PRICE_3`) e `00000000-0000-4000-8000-000000000004` (`PRICE_4`). Key, ID e posição não mudam e rows não podem ser deletadas/truncadas.
 
 #### `product_prices` (`product_prices`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `product_id uuid NOT NULL`, `price_list_id uuid NOT NULL`, `amount numeric(19,6) NOT NULL`, `currency_code char(3) NOT NULL DEFAULT 'BRL'`, `valid_from timestamptz NOT NULL`, `valid_to timestamptz`, `created_at timestamptz NOT NULL DEFAULT now()`, `created_by_user_id uuid NOT NULL`, `ended_by_user_id uuid`, `reason text NOT NULL`.
+`id uuid PK DEFAULT gen_random_uuid()`, `product_id uuid NOT NULL`, `price_list_id uuid NOT NULL`, `amount numeric(19,6) NOT NULL`, `currency_code char(3) NOT NULL DEFAULT 'BRL'`, `valid_from timestamptz NOT NULL`, `valid_to timestamptz`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `created_by_user_id uuid NOT NULL`, `ended_by_user_id uuid`, `reason text NOT NULL`.
 
 Existe no máximo uma versão corrente por `(product_id, price_list_id)` (`product_prices_current_uidx`). A exclusão `product_prices_no_overlapping_validity` impede intervalos sobrepostos em `[valid_from, valid_to)`, com `NULL` representando infinito. `valid_to` e `ended_by_user_id` são ambos nulos na versão corrente ou ambos preenchidos na versão encerrada. O histórico é esta tabela; não existe `price_history`.
 
 #### `commission_rules` (`commission_rules`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `scope commission_scope NOT NULL`, `industry_id uuid`, `product_id uuid`, `rate numeric(9,6) NOT NULL`, `valid_from timestamptz NOT NULL`, `valid_to timestamptz`, `created_at timestamptz NOT NULL DEFAULT now()`, `created_by_user_id uuid NOT NULL`, `ended_by_user_id uuid`.
+`id uuid PK DEFAULT gen_random_uuid()`, `scope commission_scope NOT NULL`, `industry_id uuid`, `product_id uuid`, `rate numeric(9,6) NOT NULL`, `valid_from timestamptz NOT NULL`, `valid_to timestamptz`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `created_by_user_id uuid NOT NULL`, `ended_by_user_id uuid`.
 
 `scope` é `industry_default` ou `product_override`. O check `commission_rules_target_ck` exige exatamente o alvo compatível. Índices únicos parciais protegem uma versão corrente por indústria (`commission_rules_current_industry_uidx`) ou produto (`commission_rules_current_product_uidx`); três constraints de exclusão impedem sobreposição por alvo. A precedência no serviço é override de produto, default da indústria, ausência. Encerramento preserva `ended_by_user_id`.
 
@@ -207,19 +210,19 @@ Snapshots de cabeçalho: `customer_legal_name_snapshot text NOT NULL`, `customer
 
 Totais e cálculo: `overall_discount_rate numeric(9,6)`, `gross_amount numeric(19,2) NOT NULL`, `line_discount_amount numeric(19,2) NOT NULL`, `net_after_line_discount_amount numeric(19,2) NOT NULL`, `overall_discount_amount numeric(19,2) NOT NULL`, `net_merchandise_amount numeric(19,2) NOT NULL`, `tax_totals_snapshot jsonb NOT NULL`, `freight_amount numeric(19,2) NOT NULL`, `grand_total_amount numeric(19,2) NOT NULL`, `commission_basis_amount numeric(19,2) NOT NULL`, `commission_value_amount numeric(19,2) NOT NULL`.
 
-Workflow: `sent_at timestamptz`, `sent_by_user_id uuid`, `approved_at timestamptz`, `approved_by_user_id uuid`, `rejected_at timestamptz`, `rejected_by_user_id uuid`, `rejection_reason text`, `cancelled_at timestamptz`, `cancelled_by_user_id uuid`, `cancellation_reason text`, `expired_at timestamptz`, `converted_at timestamptz`, `converted_by_user_id uuid`, `converted_order_id uuid`, `duplicated_from_quote_id uuid`, `created_at timestamptz NOT NULL DEFAULT now()`, `created_by_user_id uuid NOT NULL`, `updated_at timestamptz NOT NULL DEFAULT now()`, `updated_by_user_id uuid NOT NULL`.
+Workflow: `sent_at timestamptz`, `sent_by_user_id uuid`, `approved_at timestamptz`, `approved_by_user_id uuid`, `rejected_at timestamptz`, `rejected_by_user_id uuid`, `rejection_reason text`, `cancelled_at timestamptz`, `cancelled_by_user_id uuid`, `cancellation_reason text`, `expired_at timestamptz`, `converted_at timestamptz`, `converted_by_user_id uuid`, `converted_order_id uuid`, `duplicated_from_quote_id uuid`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `created_by_user_id uuid NOT NULL`, `updated_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `updated_by_user_id uuid NOT NULL`.
 
 `number` é único (`quotes_number_uq`) e segue `ORC-YYYY-NNNNNN`. `converted_order_id` é único quando preenchido (`quotes_converted_order_uidx`) e participa do vínculo recíproco com `orders.source_quote_id`. `quote_status` é `draft | sent | approved | rejected | expired | converted | cancelled`; pares de timestamp/ator e motivos de rejeição/cancelamento são protegidos por checks.
 
 #### `quote_lines` (`quote_lines`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `quote_id uuid NOT NULL`, `position integer NOT NULL`, `product_id uuid NOT NULL`, `product_price_id uuid NOT NULL`, `price_source price_source NOT NULL`, `product_code_snapshot text NOT NULL`, `product_description_snapshot text NOT NULL`, `manufacturer_code_snapshot text`, `brand_snapshot text`, `packaging_snapshot text`, `unit_snapshot text NOT NULL`, `industry_id_snapshot uuid NOT NULL`, `industry_name_snapshot text NOT NULL`, `price_list_id_snapshot uuid NOT NULL`, `price_list_key_snapshot price_list_key NOT NULL`, `price_list_name_snapshot text NOT NULL`, `unit_price_snapshot numeric(19,6) NOT NULL`, `currency_code char(3) NOT NULL DEFAULT 'BRL'`, `quantity numeric(18,6) NOT NULL`, `line_discount_rate numeric(9,6) NOT NULL`, `gross_amount_snapshot numeric(19,2) NOT NULL`, `line_discount_amount_snapshot numeric(19,2) NOT NULL`, `net_after_line_discount_amount_snapshot numeric(19,2) NOT NULL`, `overall_discount_allocation_amount_snapshot numeric(19,2) NOT NULL`, `net_merchandise_amount_snapshot numeric(19,2) NOT NULL`, `taxes_snapshot jsonb NOT NULL`, `ipi_rate_snapshot numeric(9,6)`, `icms_rate_snapshot numeric(9,6)`, `pis_rate_snapshot numeric(9,6)`, `cofins_rate_snapshot numeric(9,6)`, `commission_rule_id uuid`, `commission_source_snapshot commission_source NOT NULL`, `commission_rate_snapshot numeric(9,6)`, `commission_basis_amount_snapshot numeric(19,2) NOT NULL`, `commission_value_amount_snapshot numeric(19,2)`, `created_at timestamptz NOT NULL DEFAULT now()`, `created_by_user_id uuid NOT NULL`, `updated_at timestamptz NOT NULL DEFAULT now()`, `updated_by_user_id uuid NOT NULL`.
+`id uuid PK DEFAULT gen_random_uuid()`, `quote_id uuid NOT NULL`, `position integer NOT NULL`, `product_id uuid NOT NULL`, `product_price_id uuid NOT NULL`, `price_source price_source NOT NULL`, `product_code_snapshot text NOT NULL`, `product_description_snapshot text NOT NULL`, `manufacturer_code_snapshot text`, `brand_snapshot text`, `packaging_snapshot text`, `unit_snapshot text NOT NULL`, `industry_id_snapshot uuid NOT NULL`, `industry_name_snapshot text NOT NULL`, `price_list_id_snapshot uuid NOT NULL`, `price_list_key_snapshot price_list_key NOT NULL`, `price_list_name_snapshot text NOT NULL`, `unit_price_snapshot numeric(19,6) NOT NULL`, `currency_code char(3) NOT NULL DEFAULT 'BRL'`, `quantity numeric(18,6) NOT NULL`, `line_discount_rate numeric(9,6) NOT NULL`, `gross_amount_snapshot numeric(19,2) NOT NULL`, `line_discount_amount_snapshot numeric(19,2) NOT NULL`, `net_after_line_discount_amount_snapshot numeric(19,2) NOT NULL`, `overall_discount_allocation_amount_snapshot numeric(19,2) NOT NULL`, `net_merchandise_amount_snapshot numeric(19,2) NOT NULL`, `taxes_snapshot jsonb NOT NULL`, `ipi_rate_snapshot numeric(9,6)`, `icms_rate_snapshot numeric(9,6)`, `pis_rate_snapshot numeric(9,6)`, `cofins_rate_snapshot numeric(9,6)`, `commission_rule_id uuid`, `commission_source_snapshot commission_source NOT NULL`, `commission_rate_snapshot numeric(9,6)`, `commission_basis_amount_snapshot numeric(19,2) NOT NULL`, `commission_value_amount_snapshot numeric(19,2)`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `created_by_user_id uuid NOT NULL`, `updated_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `updated_by_user_id uuid NOT NULL`.
 
 `(quote_id, position)` é único (`quote_lines_quote_position_uq`). `price_source` é `price_list | manual_override`; `commission_source_snapshot` é `product_override | industry_default | none`. Quantidade é positiva, rates ficam entre `0` e `100`, `taxes_snapshot` é array JSON e os campos de comissão são coerentes com a origem. Todos os campos `*_snapshot` são capturados no momento da linha e não são atualizados por mudanças no cadastro.
 
 #### `quote_events` (`quote_events`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `quote_id uuid NOT NULL`, `event_type text NOT NULL`, `from_status quote_status`, `to_status quote_status`, `occurred_at timestamptz NOT NULL DEFAULT now()`, `actor_user_id uuid`, `actor_role actor_role NOT NULL`, `command_id uuid NOT NULL`, `reason text`, `metadata jsonb NOT NULL`.
+`id uuid PK DEFAULT gen_random_uuid()`, `quote_id uuid NOT NULL`, `event_type text NOT NULL`, `from_status quote_status`, `to_status quote_status`, `occurred_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `actor_user_id uuid`, `actor_role actor_role NOT NULL`, `command_id uuid NOT NULL`, `reason text`, `metadata jsonb NOT NULL`.
 
 `metadata` é objeto com `version` inteiro positivo; actor `system` não tem `actor_user_id`, enquanto os demais roles têm. A tabela é append-only por trigger e possui índices de histórico e command.
 
@@ -227,13 +230,13 @@ Workflow: `sent_at timestamptz`, `sent_by_user_id uuid`, `approved_at timestampt
 
 #### `orders` (`orders`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `source_quote_id uuid NOT NULL`, `number text NOT NULL`, `status order_status NOT NULL DEFAULT 'open'`, `customer_id uuid NOT NULL`, `representative_id uuid NOT NULL`, `price_list_id uuid NOT NULL`, `carrier_id uuid`, `customer_legal_name_snapshot text NOT NULL`, `customer_trade_name_snapshot text`, `customer_tax_id_snapshot text`, `customer_address_snapshot text`, `representative_name_snapshot text NOT NULL`, `price_list_key_snapshot price_list_key NOT NULL`, `price_list_name_snapshot text NOT NULL`, `carrier_name_snapshot text`, `valid_until_snapshot date NOT NULL`, `currency_code char(3) NOT NULL DEFAULT 'BRL'`, `freight_terms text`, `payment_terms text`, `notes text`, `overall_discount_rate numeric(9,6)`, `gross_amount numeric(19,2) NOT NULL`, `line_discount_amount numeric(19,2) NOT NULL`, `net_after_line_discount_amount numeric(19,2) NOT NULL`, `overall_discount_amount numeric(19,2) NOT NULL`, `net_merchandise_amount numeric(19,2) NOT NULL`, `tax_totals_snapshot jsonb NOT NULL`, `freight_amount numeric(19,2) NOT NULL`, `grand_total_amount numeric(19,2) NOT NULL`, `commission_basis_amount numeric(19,2) NOT NULL`, `commission_value_amount numeric(19,2) NOT NULL`, `confirmed_at timestamptz`, `confirmed_by_user_id uuid`, `invoiced_at timestamptz`, `invoiced_by_user_id uuid`, `invoice_reference text`, `completed_at timestamptz`, `completed_by_user_id uuid`, `cancelled_at timestamptz`, `cancelled_by_user_id uuid`, `cancellation_reason text`, `created_at timestamptz NOT NULL DEFAULT now()`, `created_by_user_id uuid NOT NULL`, `updated_at timestamptz NOT NULL DEFAULT now()`.
+`id uuid PK DEFAULT gen_random_uuid()`, `source_quote_id uuid NOT NULL`, `number text NOT NULL`, `status order_status NOT NULL DEFAULT 'open'`, `customer_id uuid NOT NULL`, `representative_id uuid NOT NULL`, `price_list_id uuid NOT NULL`, `carrier_id uuid`, `customer_legal_name_snapshot text NOT NULL`, `customer_trade_name_snapshot text`, `customer_tax_id_snapshot text`, `customer_address_snapshot text`, `representative_name_snapshot text NOT NULL`, `price_list_key_snapshot price_list_key NOT NULL`, `price_list_name_snapshot text NOT NULL`, `carrier_name_snapshot text`, `valid_until_snapshot date NOT NULL`, `currency_code char(3) NOT NULL DEFAULT 'BRL'`, `freight_terms text`, `payment_terms text`, `notes text`, `overall_discount_rate numeric(9,6)`, `gross_amount numeric(19,2) NOT NULL`, `line_discount_amount numeric(19,2) NOT NULL`, `net_after_line_discount_amount numeric(19,2) NOT NULL`, `overall_discount_amount numeric(19,2) NOT NULL`, `net_merchandise_amount numeric(19,2) NOT NULL`, `tax_totals_snapshot jsonb NOT NULL`, `freight_amount numeric(19,2) NOT NULL`, `grand_total_amount numeric(19,2) NOT NULL`, `commission_basis_amount numeric(19,2) NOT NULL`, `commission_value_amount numeric(19,2) NOT NULL`, `confirmed_at timestamptz`, `confirmed_by_user_id uuid`, `invoiced_at timestamptz`, `invoiced_by_user_id uuid`, `invoice_reference text`, `completed_at timestamptz`, `completed_by_user_id uuid`, `cancelled_at timestamptz`, `cancelled_by_user_id uuid`, `cancellation_reason text`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `created_by_user_id uuid NOT NULL`, `updated_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`.
 
 `source_quote_id` é único (`orders_source_quote_uq`), garantindo um pedido por quote; `number` é único (`orders_number_uq`) e segue `PED-YYYY-NNNNNN`. `order_status` é `open | confirmed | invoiced | completed | cancelled`. O conteúdo comercial e as linhas são cópias imutáveis do quote; os campos de workflow e `notes` podem evoluir conforme o serviço. `invoiced` é apenas marco operacional, não emissão fiscal.
 
 #### `order_lines` (`order_lines`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `order_id uuid NOT NULL`, `source_quote_line_id uuid NOT NULL`, `quote_line_position_snapshot integer NOT NULL`, seguido dos mesmos campos de snapshot de `quote_lines`: `position`, `product_id`, `product_price_id`, `price_source`, `product_code_snapshot`, `product_description_snapshot`, `manufacturer_code_snapshot`, `brand_snapshot`, `packaging_snapshot`, `unit_snapshot`, `industry_id_snapshot`, `industry_name_snapshot`, `price_list_id_snapshot`, `price_list_key_snapshot`, `price_list_name_snapshot`, `unit_price_snapshot`, `currency_code`, `quantity`, `line_discount_rate`, `gross_amount_snapshot`, `line_discount_amount_snapshot`, `net_after_line_discount_amount_snapshot`, `overall_discount_allocation_amount_snapshot`, `net_merchandise_amount_snapshot`, `taxes_snapshot`, `ipi_rate_snapshot`, `icms_rate_snapshot`, `pis_rate_snapshot`, `cofins_rate_snapshot`, `commission_rule_id`, `commission_source_snapshot`, `commission_rate_snapshot`, `commission_basis_amount_snapshot`, `commission_value_amount_snapshot`, `created_at timestamptz NOT NULL DEFAULT now()`, `created_by_user_id uuid NOT NULL`.
+`id uuid PK DEFAULT gen_random_uuid()`, `order_id uuid NOT NULL`, `source_quote_line_id uuid NOT NULL`, `quote_line_position_snapshot integer NOT NULL`, seguido dos mesmos campos de snapshot de `quote_lines`: `position`, `product_id`, `product_price_id`, `price_source`, `product_code_snapshot`, `product_description_snapshot`, `manufacturer_code_snapshot`, `brand_snapshot`, `packaging_snapshot`, `unit_snapshot`, `industry_id_snapshot`, `industry_name_snapshot`, `price_list_id_snapshot`, `price_list_key_snapshot`, `price_list_name_snapshot`, `unit_price_snapshot`, `currency_code`, `quantity`, `line_discount_rate`, `gross_amount_snapshot`, `line_discount_amount_snapshot`, `net_after_line_discount_amount_snapshot`, `overall_discount_allocation_amount_snapshot`, `net_merchandise_amount_snapshot`, `taxes_snapshot`, `ipi_rate_snapshot`, `icms_rate_snapshot`, `pis_rate_snapshot`, `cofins_rate_snapshot`, `commission_rule_id`, `commission_source_snapshot`, `commission_rate_snapshot`, `commission_basis_amount_snapshot`, `commission_value_amount_snapshot`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `created_by_user_id uuid NOT NULL`.
 
 `(order_id, position)` e `source_quote_line_id` são únicos. A tabela é append-only por trigger; não possui `updated_at`. A conversão copia por valor os snapshots congelados de `quote_lines` sem reler produto, preço ou comissão vivos.
 
@@ -243,7 +246,7 @@ Tem a mesma forma de `quote_events`, substituindo `quote_id` por `order_id` e us
 
 #### `attachments` (`attachments`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `order_id uuid NOT NULL`, `original_name text NOT NULL`, `mime_type text NOT NULL`, `size_bytes bigint NOT NULL`, `storage_key text NOT NULL`, `checksum text NOT NULL`, `uploaded_at timestamptz NOT NULL DEFAULT now()`, `uploaded_by_user_id uuid NOT NULL`, `archived_at timestamptz`, `archived_by_user_id uuid`.
+`id uuid PK DEFAULT gen_random_uuid()`, `order_id uuid NOT NULL`, `original_name text NOT NULL`, `mime_type text NOT NULL`, `size_bytes bigint NOT NULL`, `storage_key text NOT NULL`, `checksum text NOT NULL`, `uploaded_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `uploaded_by_user_id uuid NOT NULL`, `archived_at timestamptz`, `archived_by_user_id uuid`.
 
 Attachment é propriedade de `orders`, não de quote nem de product. `storage_key` é único (`attachments_storage_key_uq`); arquivo lógico preserva metadados e autoria. `size_bytes > 0` e par de archive actor são checks.
 
@@ -251,33 +254,45 @@ Attachment é propriedade de `orders`, não de quote nem de product. `storage_ke
 
 #### `record_assignments` (`record_assignments`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `assignee_user_id uuid NOT NULL`, `customer_id uuid`, `quote_id uuid`, `order_id uuid`, `created_at timestamptz NOT NULL DEFAULT now()`, `created_by_user_id uuid NOT NULL`, `revoked_at timestamptz`, `revoked_by_user_id uuid`.
+`id uuid PK DEFAULT gen_random_uuid()`, `assignee_user_id uuid NOT NULL`, `customer_id uuid`, `quote_id uuid`, `order_id uuid`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `created_by_user_id uuid NOT NULL`, `revoked_at timestamptz`, `revoked_by_user_id uuid`.
 
 `record_assignments_target_ck` exige exatamente um entre `customer_id`, `quote_id` e `order_id`. Há uma unique index parcial ativa por alvo (`record_assignments_active_customer_uidx`, `...quote_uidx`, `...order_uidx`) e `record_assignments_assignee_idx`. Revogação é feita por `revoked_at`/`revoked_by_user_id`; assignment não troca owner de quote/order.
 
 #### `idempotency_records` (`idempotency_records`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `command_type text NOT NULL`, `command_id uuid NOT NULL`, `actor_user_id uuid NOT NULL`, `payload_hash text NOT NULL`, `status idempotency_status NOT NULL`, `result_entity_type text`, `result_entity_id uuid`, `response_snapshot jsonb`, `created_at timestamptz NOT NULL DEFAULT now()`, `completed_at timestamptz`.
+`id uuid PK DEFAULT gen_random_uuid()`, `command_type text NOT NULL`, `command_id uuid NOT NULL`, `actor_user_id uuid NOT NULL`, `payload_hash text NOT NULL`, `status idempotency_status NOT NULL`, `result_entity_type text`, `result_entity_id uuid`, `response_snapshot jsonb`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `completed_at timestamptz`.
 
 `(command_type, command_id)` é único (`idempotency_records_command_uq`). `status` é `in_progress | completed`; checks exigem que resultado/response/completed_at estejam todos ausentes durante processamento ou todos presentes ao concluir.
 
 #### `document_sequences` (`document_sequences`)
 
-Não possui coluna `id`. Campos: `document_type document_type NOT NULL`, `year integer NOT NULL`, `next_value integer NOT NULL DEFAULT 1`, `updated_at timestamptz NOT NULL DEFAULT now()`.
+Não possui coluna `id`. Campos: `document_type document_type NOT NULL`, `year integer NOT NULL`, `next_value integer NOT NULL DEFAULT 1`, `updated_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`.
 
 A PK composta é `(document_type, year)` (`document_sequences_pk`). `document_type` é `quote | order`; `year` fica entre `2000` e `9999`; `next_value >= 1`. A alocação deve fazer upsert/lock e incrementar `next_value` na mesma transação de criação do documento; quote e order têm sequências independentes.
 
 #### `settings` (`settings`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `key text NOT NULL`, `value jsonb NOT NULL`, `version integer NOT NULL DEFAULT 1`, `created_at timestamptz NOT NULL DEFAULT now()`, `created_by_user_id uuid NOT NULL`, `updated_at timestamptz NOT NULL DEFAULT now()`, `updated_by_user_id uuid NOT NULL`.
+`id uuid PK DEFAULT gen_random_uuid()`, `key text NOT NULL`, `value jsonb NOT NULL`, `version integer NOT NULL DEFAULT 1`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `created_by_user_id uuid NOT NULL`, `updated_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `updated_by_user_id uuid NOT NULL`.
 
 `key` é único (`settings_key_uq`) e o check restringe a única chave implementada, `business`. `value` deve ser JSON object e `version > 0`.
 
 #### `audit_events` (`audit_events`)
 
-`id uuid PK DEFAULT gen_random_uuid()`, `actor_user_id uuid`, `actor_role actor_role NOT NULL`, `action text NOT NULL`, `entity_type text NOT NULL`, `entity_id uuid NOT NULL`, `occurred_at timestamptz NOT NULL DEFAULT now()`, `correlation_id uuid NOT NULL`, `before jsonb`, `after jsonb`, `metadata jsonb NOT NULL`.
+`id uuid PK DEFAULT gen_random_uuid()`, `actor_user_id uuid`, `actor_role actor_role NOT NULL`, `action text NOT NULL`, `entity_type text NOT NULL`, `entity_id uuid NOT NULL`, `occurred_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `correlation_id uuid NOT NULL`, `before jsonb`, `after jsonb`, `metadata jsonb NOT NULL`.
 
 `actor_role` é `admin | representative | read_only | system`; a combinação system/actor é validada como nos eventos de domínio. `metadata` é objeto JSON. `entity_type`/`entity_id` formam referência polimórfica sem FK; índices existem para occurred, actor, entity e correlation. `audit_events` é append-only por trigger.
+
+#### `document_logo_assets` (`document_logo_assets`)
+
+`id uuid PK DEFAULT gen_random_uuid()`, `status document_logo_status NOT NULL DEFAULT 'staged'`, `object_key text NOT NULL`, `original_filename text NOT NULL`, `mime_type text NOT NULL`, `size_bytes bigint NOT NULL`, `checksum_sha256 char(64) NOT NULL`, `width integer`, `height integer`, `created_at timestamptz NOT NULL DEFAULT date_trunc('milliseconds', now())`, `created_by_user_id uuid NOT NULL`, `activated_at timestamptz`, `activated_by_user_id uuid`, `purged_at timestamptz`, `purged_by_user_id uuid`.
+
+`status` é `staged | active | purged` e `document_logo_assets_lifecycle_ck` exige o par ator/timestamp coerente com cada estado. `object_key` é único (`document_logo_assets_object_key_uidx`) e o check restringe o formato a `document-logos/<uuid>`, sem nome de arquivo nem dado de cliente na chave. Outros checks limitam o MIME a `image/png | image/jpeg | image/webp`, o tamanho a 2 MiB, o checksum a SHA-256 hexadecimal e as dimensões a pares positivos.
+
+### 3.7 Precisão de timestamp
+
+Todo default `timestamptz` deste schema é `date_trunc('milliseconds', now())`, não `now()`.
+
+O PostgreSQL resolve `now()` em microssegundos, mas todo timestamp que sai deste sistema passa por um `Date` do JavaScript, que só carrega milissegundos. A paginação keyset serializa esse `Date` truncado no cursor, então um valor gravado em microssegundos comparava como estritamente maior que o cursor derivado dele e a linha de fronteira repetia na página seguinte. Truncar na origem iguala a precisão gravada à precisão representável e restaura o invariante `(coluna de ordenação, id)` como fronteira única de página.
 
 ## 4. Arquivo e preservação histórica
 
@@ -320,7 +335,7 @@ A migration de produção é a cadeia canonical, não os SQLs históricos no dir
 bun run db:migrate
 ```
 
-`bun run db:migrate` executa `scripts/migrate-database.ts`, que chama `migrateDatabase()` com `drizzle/canonical`. O runner valida cabeçalho/ordem/checksum, identidade e privilégios do banco, adquire advisory lock, aplica `0000_canonical_schema.sql` e `0001_canonical_invariants.sql` em transações separadas e registra `public.weyne_schema_migrations`. Reexecutar com o mesmo plano deixa `pending=0`; não edite migration já aplicada.
+`bun run db:migrate` executa `scripts/migrate-database.ts`, que chama `migrateDatabase()` com `drizzle/canonical`. O runner valida cabeçalho/ordem/checksum, identidade e privilégios do banco, adquire advisory lock, aplica as quatro migrations canonical em transações separadas e registra `public.weyne_schema_migrations`. Reexecutar com o mesmo plano deixa `pending=0`; não edite migration já aplicada.
 
 Para inspeção/generation Drizzle:
 
@@ -351,7 +366,7 @@ bun run db:reset          # destrutivo: recria volume, migra do zero e seed
 
 ### Integração contra PostgreSQL real
 
-O teste canônico provisiona um banco isolado, recria `public`, aplica as duas migrations canonical e inspeciona metadata, tipos, defaults, PKs, FKs, constraints, índices, triggers, seed, numeração, histórico, arquivamento e snapshots.
+O teste canônico provisiona um banco isolado, recria `public`, aplica a cadeia canonical completa e inspeciona metadata, tipos, defaults, PKs, FKs, constraints, índices, triggers, seed, numeração, histórico, arquivamento e snapshots.
 
 Com um PostgreSQL de teste já disponível:
 

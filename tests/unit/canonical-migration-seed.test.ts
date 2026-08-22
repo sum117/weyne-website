@@ -24,6 +24,13 @@ describe('canonical migration and seed contract', () => {
       { idx: 0, version: '7', when: 0, tag: '0000_canonical_schema', breakpoints: true },
       { idx: 1, version: '7', when: 1, tag: '0001_canonical_invariants', breakpoints: true },
       { idx: 2, version: '7', when: 2, tag: '0002_document_logo_assets', breakpoints: true },
+      {
+        idx: 3,
+        version: '7',
+        when: 3,
+        tag: '0003_millisecond_timestamp_defaults',
+        breakpoints: true,
+      },
     ])
   })
 

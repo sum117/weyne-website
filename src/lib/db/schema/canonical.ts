@@ -24,7 +24,14 @@ import {
 import type { BusinessSettings } from '@/domain/settings/business-settings'
 
 const instant = (name: string) => timestamp(name, { withTimezone: true, mode: 'date' })
-const requiredInstant = (name: string) => instant(name).notNull().defaultNow()
+// Timestamp defaults are truncated to milliseconds. PostgreSQL `now()` has
+// microsecond resolution, but every value that leaves this system round-trips
+// through a JavaScript `Date`, which only carries milliseconds. Storing
+// microseconds made keyset pagination cursors (which serialize that truncated
+// Date) compare as strictly less than the row they came from, so the boundary
+// row repeated on the next page.
+const requiredInstant = (name: string) =>
+  instant(name).notNull().default(sql`date_trunc('milliseconds', now())`)
 const money = (name: string) => numeric(name, { precision: 19, scale: 2 })
 const unitPrice = (name: string) => numeric(name, { precision: 19, scale: 6 })
 const quantity = (name: string) => numeric(name, { precision: 18, scale: 6 })

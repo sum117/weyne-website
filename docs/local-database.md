@@ -2,7 +2,7 @@
 
 The implemented schema reference is
 [`docs/domain/canonical-glossary-er-model.md`](domain/canonical-glossary-er-model.md).
-It describes the 25-table `src/lib/db/schema/canonical.ts` model and the
+It describes the 26-table `src/lib/db/schema/canonical.ts` model and the
 `drizzle/canonical` migration chain. This database is single-organization:
 there are no `tenant_id` or `organization_id` columns.
 
@@ -62,8 +62,8 @@ TEST_DATABASE_URL='postgresql://user:password@host/test_admin' \
 The seed is intentionally narrow and repeatable: it creates only the four
 permanent `price_lists` rows (`PRICE_1` through `PRICE_4`) with stable IDs and
 fails if an existing identity is inconsistent. The canonical integration test
-applies both migrations to an isolated real PostgreSQL database and checks
-deployed metadata, constraints, indexes, triggers, archive behavior,
+applies the full migration chain to an isolated real PostgreSQL database and
+checks deployed metadata, constraints, indexes, triggers, archive behavior,
 numbering, and quote/order snapshots.
 
 ## Destructive reset and repeatability
