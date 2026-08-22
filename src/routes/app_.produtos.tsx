@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { ProductCatalog } from '@/features/app/products/product-catalog'
+import { requireAuthenticatedRoute } from '@/features/app/auth/route-guard'
 
 export const Route = createFileRoute('/app_/produtos')({
+  beforeLoad: ({ location }) => requireAuthenticatedRoute(location),
   head: () => ({
     meta: [
       { title: 'Produtos | Weyne Representações' },

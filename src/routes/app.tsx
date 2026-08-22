@@ -1,7 +1,10 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { getRuntimeStatus } from '@/features/app/runtime-status'
+import { requireAuthenticatedRoute } from '@/features/app/auth/route-guard'
+import { SignOutButton } from '@/features/app/auth/sign-out-button'
 
 export const Route = createFileRoute('/app')({
+  beforeLoad: ({ location }) => requireAuthenticatedRoute(location),
   loader: () => getRuntimeStatus(),
   head: () => ({
     meta: [
@@ -14,6 +17,7 @@ export const Route = createFileRoute('/app')({
 
 function AppPage() {
   const status = Route.useLoaderData()
+  const { session } = Route.useRouteContext()
 
   return (
     <main className="grid min-h-screen place-items-center bg-off-white px-6 py-16">
@@ -34,7 +38,10 @@ function AppPage() {
         >
           Resposta SSR gerada em {status.renderedAt}.
         </p>
-        <div className="mt-8 flex flex-wrap gap-4">
+        <p className="mt-3 break-words font-sans text-sm text-muted" data-session-email>
+          Sessão ativa: {session.user.email}.
+        </p>
+        <div className="mt-8 flex flex-wrap items-center gap-4">
           <Link
             to="/"
             className="inline-flex min-h-11 items-center font-sans font-semibold text-blue underline decoration-sand decoration-2 underline-offset-4"
@@ -47,6 +54,7 @@ function AppPage() {
           >
             Ver padrões compartilhados
           </Link>
+          <SignOutButton />
         </div>
       </section>
     </main>

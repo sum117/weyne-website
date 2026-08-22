@@ -12,8 +12,15 @@ boundary documented in [ssr-runtime.md](ssr-runtime.md).
 | `src/lib/auth/config.server.ts` | Validated, server-only environment contract |
 | `src/lib/auth/auth.server.ts` | The Better Auth instance over the canonical Drizzle tables |
 | `src/lib/auth/provisioning.server.ts` | Administrator-driven credential creation |
+| `src/lib/auth/contract.ts` | Isomorphic contract: public paths and the minimal session projection |
+| `src/lib/auth/session.server.ts` | Authoritative server-side session resolution (`getAppSession`, `requireAppSession`) |
+| `src/lib/auth/cookie.server.ts` | Expiring `Set-Cookie` headers, used only when revocation could not be confirmed |
 | `src/routes/api.auth.$.ts` | The `GET`/`POST` protocol route mounted at `/api/auth/*` |
+| `src/routes/entrar.tsx` | The public credential login page |
+| `src/features/app/auth/` | Login/logout server functions, login form, sign-out control, route guard |
+| `src/start.ts` | Global Start config; installs the framework CSRF middleware over server functions |
 | `scripts/provision-auth-user.ts` | Operator utility that creates one credential identity |
+| `scripts/smoke-auth-flow.ts` | Live login/logout journey smoke against a running runtime |
 
 The route delegates every request to `auth.handler(request)`. Password
 hashing, session tokens, cookie signing, origin validation, and CSRF checks
@@ -68,6 +75,77 @@ never echoed, when any of the following holds:
 - Sessions are database rows, so sign-out revokes server-side. There is no
   stateless cookie cache; a revoked cookie cannot regain access.
 
+## Application login, logout, and protected routes
+
+The Better Auth protocol route at `/api/auth/*` stays mounted, but the
+application never calls it from the browser. The login journey goes through
+two server functions in `src/features/app/auth/login.functions.ts`, which
+delegate the security-critical work to `auth.api.signInEmail` /
+`auth.api.signOut` and forward Better Auth's own `Set-Cookie` headers
+verbatim. No cookie, token, or hash is ever built by this repository.
+
+| Surface | Path | Behavior |
+| --- | --- | --- |
+| Login page | `/entrar` | Public, `noindex`. An already-authenticated visitor is redirected away in `beforeLoad`. |
+| Protected application | `/app`, `/app/*` | Every route calls `requireAuthenticatedRoute` in `beforeLoad`, which runs during SSR — an anonymous request gets `307 /entrar?redirect=<path>` before any protected markup or loader data is produced. |
+
+Guarantees worth keeping in mind when changing this area:
+
+- **`beforeLoad`, never the component.** A component-level check would render
+  and stream protected markup first. `tests/unit/authenticated-route-boundary.test.ts`
+  fails the build if any `/app` route file drops the guard, so a new route
+  cannot silently ship unprotected.
+- **The redirect target is sanitized.** `sanitizeRedirectPath` reduces the
+  `redirect` search value to a same-origin path, so `//evil.example`,
+  `https://evil.example`, and `/\evil.example` cannot be used to bounce a
+  visitor off-site after login.
+- **Route context is presentation only.** The session placed in route context
+  is never an authorization decision. Every privileged server function calls
+  `requireAppSession()` itself and re-resolves the caller from the request
+  cookie, because a server function is an RPC endpoint a client can POST to
+  directly without ever loading the route that normally calls it.
+- **The client sees a minimal projection.** `AppSession` carries id, name,
+  email, role, and the session expiry — no session token, no `auth_subject`,
+  no password material.
+- **Server functions are CSRF-checked by the framework.** `src/start.ts`
+  installs `createCsrfMiddleware` over `serverFn` traffic. This is required
+  because a direct `auth.api.*` call bypasses the origin validation
+  `auth.handler` performs for `/api/auth/*` requests. Ordinary document
+  requests are deliberately not filtered — they are top-level navigations
+  that must work from any entry point.
+- **Logout revokes server-side.** `auth.api.signOut` deletes the session row;
+  the expired cookies it returns are forwarded verbatim. If the revocation
+  call itself fails, `expiredSessionCookieHeaders` still clears the browser
+  cookie, and the guard re-checks the (still valid) server session on the
+  next request rather than assuming success.
+
+### Live smoke of the journey
+
+`scripts/smoke-auth-flow.ts` drives the whole journey over raw HTTP against a
+running runtime, using the same seroval wire format the browser client uses.
+It needs the two server-function IDs, which are stable content hashes visible
+in the built client chunk:
+
+```sh
+grep -o '[a-f0-9]\{64\}' dist/client/assets/login.functions-*.js
+# first hash  = signInWithPassword, second = signOutCurrentSession
+
+DATABASE_URL=... BETTER_AUTH_URL=http://127.0.0.1:3199 \
+  BETTER_AUTH_SECRET=... PORT=3199 HOST=127.0.0.1 node dist/server/runtime.js
+
+WEYNE_SMOKE_ORIGIN=http://127.0.0.1:3199 \
+WEYNE_SMOKE_EMAIL=... WEYNE_SMOKE_PASSWORD=... \
+WEYNE_SMOKE_SIGNIN_ID=<hash1> WEYNE_SMOKE_SIGNOUT_ID=<hash2> \
+  bun scripts/smoke-auth-flow.ts
+```
+
+It asserts the redirect, the login page, non-enumerating rejection, the
+cross-origin 403, cookie attributes, reload persistence, the bounce off
+`/entrar` while authenticated, logout revocation, replayed-cookie refusal,
+and that public `/` is untouched. Use `BETTER_AUTH_URL` with `http` only
+against a local runtime started with `NODE_ENV=development` — production
+rejects a non-https origin by design.
+
 ## Schema and migrations
 
 Better Auth uses the canonical `users`, `sessions`, `accounts`, and
@@ -115,10 +193,19 @@ password or its hash.
 
 ```sh
 bun run test tests/unit/auth-config.test.ts        # environment contract
-bun run test:database                              # includes the live auth suite
+bun run test tests/unit/auth-contract.test.ts      # isomorphic contract + redirect sanitizer
+bun run test tests/unit/auth-login-form.test.tsx   # login form and sign-out control
+bun run test tests/unit/authenticated-route-boundary.test.ts  # every /app route is guarded
+bun run test:database                              # includes the live auth suites
+bunx playwright test --project=chromium            # guard + login page in a real browser
 ```
 
 `tests/integration/better-auth-integration.test.ts` exercises the real
 handler against real PostgreSQL: adapter writes, UUID keys, cookie
 attributes under both http and https, session persistence, revocation,
 sign-up refusal, and both cross-site rejection paths.
+`tests/integration/app-session-lifecycle.test.ts` covers the application
+session projection on top of it: minimal non-sensitive fields, persistence
+across independent requests, revocation, expiry, per-device isolation, and
+the cookie-clearing fallback's name/attribute alignment with what Better Auth
+actually sets.

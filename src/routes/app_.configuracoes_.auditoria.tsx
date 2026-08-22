@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { AuditActivityViewer } from '@/features/app/audit/audit-activity-viewer'
 import { AppQueryProvider } from '@/lib/query/app-query-provider'
+import { requireAuthenticatedRoute } from '@/features/app/auth/route-guard'
 
 /**
  * Admin-only audit activity viewer (`/app/configuracoes/auditoria`).
@@ -14,6 +15,7 @@ import { AppQueryProvider } from '@/lib/query/app-query-provider'
  */
 export const Route = createFileRoute('/app_/configuracoes_/auditoria')({
   validateSearch: (search) => search as Record<string, unknown>,
+  beforeLoad: ({ location }) => requireAuthenticatedRoute(location),
   head: () => ({
     meta: [
       { title: 'Auditoria de atividades | Weyne Representações' },

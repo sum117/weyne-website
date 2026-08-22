@@ -3,6 +3,7 @@ import {
   ReportsShell,
   type ReportNavigate,
 } from '@/features/app/reports/reports-shell'
+import { requireAuthenticatedRoute } from '@/features/app/auth/route-guard'
 
 function todayInBusinessTimezone() {
   return new Intl.DateTimeFormat('en-CA', {
@@ -15,6 +16,7 @@ function todayInBusinessTimezone() {
 
 export const Route = createFileRoute('/app_/relatorios')({
   validateSearch: (search) => search as Record<string, unknown>,
+  beforeLoad: ({ location }) => requireAuthenticatedRoute(location),
   head: () => ({
     meta: [
       { title: 'Relatórios | Weyne Representações' },

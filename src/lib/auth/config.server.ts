@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { AUTH_BASE_PATH } from './contract'
 
 /**
  * Server-only Better Auth configuration (ADR 0003).
@@ -12,8 +13,12 @@ import { z } from 'zod'
  * closed on anything missing, weak, or insecure.
  */
 
-/** Mount point of the Better Auth protocol route. Matches `src/routes/api.auth.$.ts`. */
-export const AUTH_BASE_PATH = '/api/auth'
+/**
+ * Mount point of the Better Auth protocol route. Re-exported from the
+ * isomorphic contract so server modules keep a single import, while the
+ * browser-safe definition stays in `contract.ts`.
+ */
+export { AUTH_BASE_PATH } from './contract'
 
 /** Minimum secret length Better Auth considers adequate. */
 export const MINIMUM_SECRET_LENGTH = 32

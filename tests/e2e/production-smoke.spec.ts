@@ -33,13 +33,22 @@ test('production stack serves prerendered, healthy, cache-safe responses', async
     expect(cacheControl(response), asset).toMatch(immutableCache)
   }
 
-  const app = await request.get('/app')
-  expect(app.status()).toBe(200)
-  expect(app.headers()['content-type']).toContain('text/html')
-  expect(cacheControl(app)).not.toMatch(immutableCache)
-  const appHtml = await app.text()
-  expect(appHtml).toContain('Área de gestão')
-  expect(appHtml).toContain('data-server-rendered-at=')
+  // `/app` is protected at the server-side route boundary: an unauthenticated
+  // request is redirected before any protected markup or loader data is
+  // produced. This smoke stack has no reachable database, so session
+  // resolution also fails closed here — both paths land on the same redirect.
+  const app = await request.get('/app', { maxRedirects: 0 })
+  expect(app.status()).toBe(307)
+  expect(app.headers()['location']).toBe('/entrar?redirect=%2Fapp')
+  expect(await app.text()).not.toContain('data-server-rendered-at')
+
+  const login = await request.get('/entrar')
+  expect(login.status()).toBe(200)
+  expect(login.headers()['content-type']).toContain('text/html')
+  expect(cacheControl(login)).not.toMatch(immutableCache)
+  const loginHtml = await login.text()
+  expect(loginHtml).toContain('Entrar')
+  expect(loginHtml).toContain('E-mail')
 })
 
 test('prerendered landing page hydrates its mobile menu', async ({ page }) => {
@@ -51,18 +60,32 @@ test('prerendered landing page hydrates its mobile menu', async ({ page }) => {
   await expect(page.getByRole('dialog').getByRole('link').first()).toBeFocused()
 })
 
-test('direct application navigation SSRs and hydrates client routing', async ({ page }) => {
+test('direct application navigation is guarded before any protected render', async ({
+  page,
+}) => {
   const documentRequests: string[] = []
   page.on('request', (request) => {
     if (request.resourceType() === 'document') documentRequests.push(request.url())
   })
 
+  // The guard runs during SSR, so the browser is redirected to the login page
+  // before the protected component ever renders.
   await page.goto('/app')
-  await expect(page.getByRole('heading', { name: 'Weyne Representações' })).toBeVisible()
-  await expect(page.locator('[data-server-rendered-at]')).toBeVisible()
+  await expect(page).toHaveURL(/\/entrar\?redirect=%2Fapp$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Entrar' })).toBeVisible()
+  await expect(page.locator('[data-server-rendered-at]')).toHaveCount(0)
 
-  await page.getByRole('link', { name: 'Voltar ao site institucional' }).click()
-  await expect(page).toHaveURL(/\/$/)
-  await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-  expect(documentRequests).toHaveLength(1)
+  // Exactly two document navigations: the original request and the redirect
+  // the server answered it with. Anything more would mean the client
+  // re-requested a protected document after hydration.
+  expect(documentRequests).toEqual([
+    `${new URL('/app', page.url()).origin}/app`,
+    `${new URL('/app', page.url()).origin}/entrar?redirect=%2Fapp`,
+  ])
+
+  // The login page hydrates: the controlled input accepts typing, and no
+  // further document request is issued while it does.
+  await page.getByLabel('E-mail').fill('sem-conta@example.test')
+  await expect(page.getByLabel('E-mail')).toHaveValue('sem-conta@example.test')
+  expect(documentRequests).toHaveLength(2)
 })
