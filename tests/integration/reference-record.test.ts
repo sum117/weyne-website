@@ -19,6 +19,7 @@ const IDS = [
   '11111111-1111-4111-8111-111111111111',
   '22222222-2222-4222-8222-222222222222',
   '33333333-3333-4333-8333-333333333333',
+  '44444444-4444-4444-8444-444444444444',
 ] as const
 const TIMES = [
   '2026-08-17T12:00:00.000Z',
@@ -226,6 +227,42 @@ describe('reference record pattern on PostgreSQL', () => {
       { operation: 'updated', version: '2', recordId: beta.id },
       { operation: 'archived', version: '2', recordId: alpha.id },
     ])
+  })
+
+  it('treats LIKE metacharacters in a contains filter as literal text', async () => {
+    const operations = realOperations()
+    await createRecord(operations, 'Contrato 100% ativo', '10.000000')
+    await createRecord(operations, 'Contrato padrao', '20.000000')
+    const literalUnderscore = await createRecord(operations, 'Cliente a_c', '30.000000')
+    await createRecord(operations, 'Cliente abc', '40.000000')
+
+    const percent = await operations.list({
+      limit: 10,
+      filters: { nameContains: '%' },
+      sortBy: 'name',
+      sortDirection: 'asc',
+    })
+    expect(percent.ok).toBe(true)
+    if (!percent.ok) throw new Error('Expected the percent filter to succeed')
+    expect(percent.data.items.map(({ name }) => name)).toEqual(['Contrato 100% ativo'])
+
+    const underscore = await operations.list({
+      limit: 10,
+      filters: { nameContains: 'a_c' },
+      sortBy: 'name',
+      sortDirection: 'asc',
+    })
+    expect(underscore.ok).toBe(true)
+    if (!underscore.ok) throw new Error('Expected the underscore filter to succeed')
+    expect(underscore.data.items.map(({ id }) => id)).toEqual([literalUnderscore.id])
+
+    const backslash = await operations.list({
+      limit: 10,
+      filters: { nameContains: '\\' },
+      sortBy: 'name',
+      sortDirection: 'asc',
+    })
+    expect(backslash).toMatchObject({ ok: true, data: { items: [], nextCursor: null } })
   })
 
   it('rejects invalid and unsupported request fields before constructing database access', async () => {

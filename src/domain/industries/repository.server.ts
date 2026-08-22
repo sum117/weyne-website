@@ -30,6 +30,7 @@ import {
   industryProfiles,
 } from '@/lib/db/schema/catalog'
 import { createKeysetCursorCodec } from '@/lib/server/cursor.server'
+import { containsPattern } from '@/lib/server/sql-pattern'
 import {
   serializeDate,
   serializeDecimal,
@@ -225,12 +226,13 @@ export function createPostgresIndustryRepository(database: IndustryExecutor) {
 
       const search = query.filters.search?.trim()
       if (search) {
-        const canonicalSearch = normalizedSearch(search)
+        const pattern = containsPattern(search)
+        const canonicalPattern = containsPattern(normalizedSearch(search))
         filters.push(
           or(
-            ilike(industries.legalName, `%${search}%`),
-            ilike(industryProfiles.tradeName, `%${search}%`),
-            ilike(industryProfiles.cnpj, `%${canonicalSearch}%`),
+            ilike(industries.legalName, pattern),
+            ilike(industryProfiles.tradeName, pattern),
+            ilike(industryProfiles.cnpj, canonicalPattern),
           )!,
         )
       }

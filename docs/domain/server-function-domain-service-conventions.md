@@ -57,6 +57,8 @@ Use the reference feature as the template:
 | Shared request parsing | `src/lib/server/request.schema.ts` | `parseRequest`, `createListRequestSchema` |
 | Shared result/error primitives | `src/lib/domain/result.ts`, `src/lib/server/public-error.ts` | typed result pipeline |
 | Shared cursor/serialization | `src/lib/server/cursor.server.ts`, `src/lib/server/serialization.ts` | opaque cursors and DTO serialization |
+| Shared `LIKE` escaping | `src/lib/server/sql-pattern.ts` | `containsPattern`, `escapeLikePattern` |
+| Executable layering guard | `tests/unit/server-layering-boundaries.test.ts` | routes/components/infrastructure import rules |
 
 Feature schemas are the single request-validation definition. Reuse shared schema factories rather than copying pagination, cursor, or direction rules into every feature. `reference-record.schema.ts` uses:
 
@@ -154,6 +156,18 @@ Cursors are opaque base64url JSON validated by `createKeysetCursorCodec` in `src
 
 `createListRequestSchema` uses a strict filter object, a bounded `limit` (1–100), and an explicit `z.enum` generated from `sortFields`. The repository must still switch over those typed values when choosing columns/expressions. Never interpolate a client-provided field, SQL fragment, direction, or operator into a query. Unsupported fields fail validation before service/repository invocation; they are not ignored.
 
+An allowlisted filter **name** is not the same as a safe filter **value**. A `LIKE`/`ILIKE` value is data, never pattern syntax: interpolating it directly into `` `%${value}%` `` lets `%` and `_` act as wildcards, so searching for `%` matches every row and `a_c` matches `abc`. Drizzle parameterizes the pattern, so this is not SQL injection — it is a correctness and query-cost defect. Escape the value with the shared helper in `src/lib/server/sql-pattern.ts`, then add the wildcards you meant:
+
+```ts
+import { containsPattern } from '@/lib/server/sql-pattern'
+
+if (nameContains) {
+  filters.push(ilike(referenceRecords.name, containsPattern(nameContains)))
+}
+```
+
+`escapeLikePattern`, `containsPattern`, and `startsWithPattern` cover the cases in this repository. `tests/unit/server-layering-boundaries.test.ts` fails the build on any new `` ilike(column, `%${value}%`) `` call site.
+
 ## 6. Writes, transactions, and optimistic concurrency
 
 The domain service owns transaction scope through the injected unit-of-work contract. The repository only executes operations using the database/executor it receives. `createReferenceRecordPersistence` binds a transaction-scoped repository in `database.transaction(...)`:
@@ -216,6 +230,7 @@ Before submitting a downstream feature, verify that it does **not**:
 - [ ] return a Drizzle row, `$inferSelect`, `bigint`, `Date`, or raw database object to a route/client;
 - [ ] expose internal errors, causes, stack traces, SQLSTATEs, SQL text, schema names, paths, or secrets;
 - [ ] accept arbitrary filter names, sort fields, sort directions, operators, or SQL fragments from the request;
+- [ ] interpolate a caller-supplied value into a `LIKE`/`ILIKE` pattern without `containsPattern`/`escapeLikePattern`;
 - [ ] silently ignore an unsupported filter/sort key instead of rejecting it;
 - [ ] use offset pagination where the feature contract calls for cursor/keyset pagination;
 - [ ] perform a multi-step write (entity plus event, version plus history, or similar) outside one transaction;
@@ -235,7 +250,9 @@ bun run test -- tests/unit/reference-record-service.test.ts \
   tests/unit/reference-record-server-functions.test.ts \
   tests/unit/server-request.test.ts \
   tests/unit/server-result.test.ts \
-  tests/unit/server-serialization.test.ts
+  tests/unit/server-serialization.test.ts \
+  tests/unit/sql-pattern.test.ts \
+  tests/unit/server-layering-boundaries.test.ts
 
 bun run lint -- \
   src/features/reference-record \
@@ -249,4 +266,11 @@ bun run check
 bun run test:database -- tests/integration/reference-record.test.ts
 ```
 
-Validated on 2026-08-17: the five unit files passed 29 tests; the PostgreSQL regression passed 5 tests; `bun run lint -- ...` passed with warnings and no errors; `bun run typecheck` passed; and the final `bun run check` passed (80 existing ESLint warnings and 2 preview-mode content warnings). The tests cover row mapping, all five operations, validation-before-service behavior, allowlists, opaque cursors, optimistic conflicts, archive semantics, transactional rollback, public error mapping, and sanitized unexpected failures. `bun run check` remains the repository gate and must be rerun before merging downstream implementation work; report any unrelated concurrent failure rather than claiming a green result.
+Validated on 2026-08-17: the five original unit files passed 29 tests; the PostgreSQL regression passed 5 tests; lint, typecheck, and `bun run check` passed.
+
+Re-validated on 2026-08-21 against the current schema card (`t_c81a3b6b`). The PostgreSQL regression now passes 6 tests, and two guards were added after a real defect was found in the shipped pattern:
+
+- `containsPattern` escaping. The reference repository, plus the carrier, industry, and user repositories, interpolated a caller-supplied filter value straight into `` `%${value}%` ``. A RED PostgreSQL test proved that a `%` search returned every row and `a_c` matched `abc`. All four call sites now escape the value.
+- `tests/unit/server-layering-boundaries.test.ts` asserts the routes -> features -> domain/data rules against the real source tree instead of leaving them as prose. Each guard was mutation-checked: an injected route-level `drizzle-orm` import, a component-level `getDatabase` import, an upward `@/features` import from `src/lib`, a bare `` ilike(column, `%${value}%`) ``, and a `hono` import each turned the suite RED, and the tree was restored afterwards.
+
+`bun run check` remains the repository gate and must be rerun before merging downstream implementation work; report any unrelated concurrent failure rather than claiming a green result.

@@ -30,6 +30,7 @@ import type * as databaseSchema from '@/lib/db/schema'
 import { carrierAudit } from '@/lib/db/schema/carrier-audit'
 import { carriers } from '@/lib/db/schema/carriers'
 import { createKeysetCursorCodec } from '@/lib/server/cursor.server'
+import { containsPattern } from '@/lib/server/sql-pattern'
 import {
   serializeDate,
   serializeNullableDate,
@@ -200,15 +201,16 @@ function createCarrierRepository(executor: CarrierExecutor): CarrierRepository {
 
       const search = query.filters.search?.trim()
       if (search) {
+        const pattern = containsPattern(search)
         filters.push(
           or(
-            ilike(carriers.name, `%${search}%`),
-            ilike(carriers.taxId, `%${search}%`),
-            ilike(carriers.contactName, `%${search}%`),
-            ilike(carriers.email, `%${search}%`),
-            ilike(carriers.phone, `%${search}%`),
-            ilike(carriers.city, `%${search}%`),
-            ilike(carriers.state, `%${search}%`),
+            ilike(carriers.name, pattern),
+            ilike(carriers.taxId, pattern),
+            ilike(carriers.contactName, pattern),
+            ilike(carriers.email, pattern),
+            ilike(carriers.phone, pattern),
+            ilike(carriers.city, pattern),
+            ilike(carriers.state, pattern),
           )!,
         )
       }

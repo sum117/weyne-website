@@ -19,6 +19,7 @@ import {
   referenceRecords,
 } from '@/lib/db/schema/reference-record'
 import { createKeysetCursorCodec } from '@/lib/server/cursor.server'
+import { containsPattern } from '@/lib/server/sql-pattern'
 import {
   serializeDate,
   serializeDecimal,
@@ -144,7 +145,9 @@ function createRepository(executor: ReferenceExecutor): ReferenceRecordRepositor
 
       const filters: SQL[] = [isNull(referenceRecords.archivedAt)]
       const nameContains = query.filters.nameContains?.trim()
-      if (nameContains) filters.push(ilike(referenceRecords.name, `%${nameContains}%`))
+      if (nameContains) {
+        filters.push(ilike(referenceRecords.name, containsPattern(nameContains)))
+      }
       const afterCursor = cursorPredicate(query)
       if (afterCursor) filters.push(afterCursor)
 
