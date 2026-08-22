@@ -33,6 +33,13 @@ services:
     image: ${WEYNE_IMAGE:?set WEYNE_IMAGE to an immutable GHCR tag or digest in .env.weyne}
     environment:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env.weyne}
+      # Server-only auth configuration. `:?` fails the deploy loudly rather
+      # than starting an app that would refuse every authenticated request.
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env.weyne}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL in .env.weyne}
+      # Also set by the image; pinned here so the fail-closed production
+      # branch cannot be lost to a Dockerfile change.
+      NODE_ENV: production
       HOST: ${HOST:-0.0.0.0}
       PORT: ${PORT:-3000}
     restart: always

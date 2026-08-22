@@ -76,6 +76,11 @@ secrets in a `VITE_` variable):
 | `VITE_SITE_ORIGIN` | Canonical origin (no trailing slash) | `https://weynerepresentacoes.com.br` |
 | `VITE_WHATSAPP_NUMBER` | Public WhatsApp number | `+55 (81) 99996-4054` |
 
+Authentication adds two **server-only** variables, `BETTER_AUTH_SECRET` and
+`BETTER_AUTH_URL`. Both are optional in development and required in
+production; see
+[`docs/operations/authentication.md`](docs/operations/authentication.md).
+
 ## Scripts
 
 | Script | What it does |

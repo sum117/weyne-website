@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as AppPadroesRouteImport } from './routes/app_.padroes'
 import { Route as AppProdutosRouteImport } from './routes/app_.produtos'
 import { Route as AppRelatoriosRouteImport } from './routes/app_.relatorios'
+import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
 import { Route as AppConfiguracoesAuditoriaRouteImport } from './routes/app_.configuracoes_.auditoria'
 
 const IndexRoute = IndexRouteImport.update({
@@ -41,6 +42,11 @@ const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
   path: '/app/relatorios',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppConfiguracoesAuditoriaRoute =
   AppConfiguracoesAuditoriaRouteImport.update({
     id: '/app_/configuracoes_/auditoria',
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/app/padroes': typeof AppPadroesRoute
   '/app/produtos': typeof AppProdutosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/configuracoes/auditoria': typeof AppConfiguracoesAuditoriaRoute
 }
 export interface FileRoutesByTo {
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/app/padroes': typeof AppPadroesRoute
   '/app/produtos': typeof AppProdutosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/configuracoes/auditoria': typeof AppConfiguracoesAuditoriaRoute
 }
 export interface FileRoutesById {
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/app_/padroes': typeof AppPadroesRoute
   '/app_/produtos': typeof AppProdutosRoute
   '/app_/relatorios': typeof AppRelatoriosRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/app_/configuracoes_/auditoria': typeof AppConfiguracoesAuditoriaRoute
 }
 export interface FileRouteTypes {
@@ -81,6 +90,7 @@ export interface FileRouteTypes {
     | '/app/padroes'
     | '/app/produtos'
     | '/app/relatorios'
+    | '/api/auth/$'
     | '/app/configuracoes/auditoria'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -89,6 +99,7 @@ export interface FileRouteTypes {
     | '/app/padroes'
     | '/app/produtos'
     | '/app/relatorios'
+    | '/api/auth/$'
     | '/app/configuracoes/auditoria'
   id:
     | '__root__'
@@ -97,6 +108,7 @@ export interface FileRouteTypes {
     | '/app_/padroes'
     | '/app_/produtos'
     | '/app_/relatorios'
+    | '/api/auth/$'
     | '/app_/configuracoes_/auditoria'
   fileRoutesById: FileRoutesById
 }
@@ -106,6 +118,7 @@ export interface RootRouteChildren {
   AppPadroesRoute: typeof AppPadroesRoute
   AppProdutosRoute: typeof AppProdutosRoute
   AppRelatoriosRoute: typeof AppRelatoriosRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   AppConfiguracoesAuditoriaRoute: typeof AppConfiguracoesAuditoriaRoute
 }
 
@@ -146,6 +159,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRelatoriosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app_/configuracoes_/auditoria': {
       id: '/app_/configuracoes_/auditoria'
       path: '/app/configuracoes/auditoria'
@@ -162,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppPadroesRoute: AppPadroesRoute,
   AppProdutosRoute: AppProdutosRoute,
   AppRelatoriosRoute: AppRelatoriosRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
   AppConfiguracoesAuditoriaRoute: AppConfiguracoesAuditoriaRoute,
 }
 export const routeTree = rootRouteImport
