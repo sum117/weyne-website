@@ -6,12 +6,13 @@ Idioma de negócio: pt-BR. Nomes de tabela, coluna, constraint e enum abaixo sã
 
 ## 1. Escopo e fonte de verdade
 
-O schema canônico é o conjunto de quatro migrations:
+O schema canônico é o conjunto de cinco migrations:
 
 - `drizzle/canonical/0000_canonical_schema.sql`: enums, 25 tabelas, chaves, FKs, checks e índices;
 - `drizzle/canonical/0001_canonical_invariants.sql`: exclusões de vigência, triggers de append-only/arquivo, conjunto permanente de listas e paridade quote/order;
 - `drizzle/canonical/0002_document_logo_assets.sql`: a 26ª tabela `document_logo_assets`, com o enum `document_logo_status` e o ciclo staged/active/purged do logotipo dos documentos;
-- `drizzle/canonical/0003_millisecond_timestamp_defaults.sql`: trunca todo default `timestamptz` para milissegundos e normaliza os valores já gravados.
+- `drizzle/canonical/0003_millisecond_timestamp_defaults.sql`: trunca todo default `timestamptz` para milissegundos e normaliza os valores já gravados;
+- `drizzle/canonical/0004_auth_rate_limits.sql`: a 27ª tabela `rate_limits`, contadores transitórios do rate limiter do Better Auth. Não é tabela de domínio auditável — não tem autoria, arquivamento nem trigger de auditoria, e suas linhas são podadas pela própria biblioteca.
 
 A declaração Drizzle correspondente é `src/lib/db/schema/canonical.ts`; `drizzle.config.ts` aponta para ela e para `drizzle/canonical`.
 
@@ -335,7 +336,7 @@ A migration de produção é a cadeia canonical, não os SQLs históricos no dir
 bun run db:migrate
 ```
 
-`bun run db:migrate` executa `scripts/migrate-database.ts`, que chama `migrateDatabase()` com `drizzle/canonical`. O runner valida cabeçalho/ordem/checksum, identidade e privilégios do banco, adquire advisory lock, aplica as quatro migrations canonical em transações separadas e registra `public.weyne_schema_migrations`. Reexecutar com o mesmo plano deixa `pending=0`; não edite migration já aplicada.
+`bun run db:migrate` executa `scripts/migrate-database.ts`, que chama `migrateDatabase()` com `drizzle/canonical`. O runner valida cabeçalho/ordem/checksum, identidade e privilégios do banco, adquire advisory lock, aplica as cinco migrations canonical em transações separadas e registra `public.weyne_schema_migrations`. Reexecutar com o mesmo plano deixa `pending=0`; não edite migration já aplicada.
 
 Para inspeção/generation Drizzle:
 

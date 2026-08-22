@@ -34,6 +34,10 @@ const TABLES = [
   canonical.documentSequences,
   canonical.settings,
   canonical.auditEvents,
+  // Better Auth's rate-limit counters (migration 0004). Infrastructure rather
+  // than domain — no authorship, no archive, no audit trigger — but it is a
+  // real table in the canonical chain, so the schema contract must cover it.
+  canonical.rateLimits,
 ] as readonly PgTable[]
 
 const EXPECTED_PRICE_LISTS = [
@@ -70,6 +74,7 @@ async function applyCanonicalMigrations(client: Sql): Promise<void> {
     '0001_canonical_invariants.sql',
     '0002_document_logo_assets.sql',
     '0003_millisecond_timestamp_defaults.sql',
+    '0004_auth_rate_limits.sql',
   ])
   for (const migrationName of migrationNames) {
     await client.unsafe(await readFile(resolve(directory, migrationName), 'utf8'))

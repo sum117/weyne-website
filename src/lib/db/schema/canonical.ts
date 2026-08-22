@@ -1222,6 +1222,41 @@ export const auditEvents = pgTable(
   ],
 )
 
+/**
+ * Better Auth's rate-limit counters.
+ *
+ * Owned by the library, not by the business domain: the column names below
+ * are the shape `better-auth`'s database storage adapter reads and writes
+ * (`key`, `count`, `lastRequest`), so they are camelCase-mapped rather than
+ * renamed. It is deliberately NOT an auditable table — there is no author,
+ * no archive, and rows are pruned by the library once their window lapses.
+ *
+ * The table exists because the default in-memory store is per-process: a
+ * restarted container, or a second replica, would forget an in-flight
+ * brute-force window entirely. Persisting the counters makes the limit hold
+ * across both, and PostgreSQL's atomic guarded UPDATE is what keeps
+ * concurrent requests from each passing a stale read.
+ */
+export const rateLimits = pgTable(
+  'rate_limits',
+  {
+    id: uuidPk(),
+    key: text('key').notNull(),
+    count: integer('count').notNull(),
+    // Epoch milliseconds, which is the unit Better Auth compares against its
+    // window. A timestamptz would force a lossy conversion on every read.
+    lastRequest: bigint('last_request', { mode: 'number' }).notNull(),
+  },
+  (table) => [
+    unique('rate_limits_key_uq').on(table.key),
+    // The pruning sweep deletes every row whose window has lapsed.
+    index('rate_limits_last_request_idx').on(table.lastRequest),
+    check('rate_limits_key_ck', sql`btrim(${table.key}) <> ''`),
+    check('rate_limits_count_ck', sql`${table.count} >= 0`),
+    check('rate_limits_last_request_ck', sql`${table.lastRequest} >= 0`),
+  ],
+)
+
 export const usersRelations = relations(users, ({ many, one }) => ({
   sessions: many(sessions),
   accounts: many(accounts),

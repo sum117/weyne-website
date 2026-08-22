@@ -8,7 +8,7 @@ Idioma de negócio e UI: pt-BR. Nomes de código, schema, entidades, campos, rol
 
 A implementação é single-organization: uma instalação atende somente à Weyne. Não existem `Organization`, `Tenant`, `tenant_id` ou `organization_id` no banco. `ALL` significa todos os registros desta instalação; multi-tenancy exige contrato e migration futuros.
 
-A fonte física é `src/lib/db/schema/canonical.ts` com a cadeia de migrations em `drizzle/canonical/`. O ER implementado lista as 26 tabelas e todas as colunas reais. Este documento fixa comportamento de domínio e não cria aliases de schema.
+A fonte física é `src/lib/db/schema/canonical.ts` com a cadeia de migrations em `drizzle/canonical/`. O ER implementado lista as 26 tabelas de domínio e todas as colunas reais; `rate_limits` (migration `0004`) é infraestrutura do Better Auth e não integra o modelo de domínio. Este documento fixa comportamento de domínio e não cria aliases de schema.
 
 Fora da Fase 1: emissão de nota fiscal, motor tributário, contas a receber, cobrança, pagamento de comissão, ERP, assinatura digital, portal do cliente e criação direta de pedido. `orders.status = invoiced` é apenas marco operacional informado por usuário autorizado.
 

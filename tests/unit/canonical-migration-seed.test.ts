@@ -31,6 +31,13 @@ describe('canonical migration and seed contract', () => {
         tag: '0003_millisecond_timestamp_defaults',
         breakpoints: true,
       },
+      {
+        idx: 4,
+        version: '7',
+        when: 4,
+        tag: '0004_auth_rate_limits',
+        breakpoints: true,
+      },
     ])
   })
 

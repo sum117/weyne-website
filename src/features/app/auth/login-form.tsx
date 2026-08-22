@@ -15,8 +15,10 @@ import { signInWithPassword } from './login.functions'
  * session from that cookie on the server. Nothing about the identity is kept
  * in browser memory or storage here.
  *
- * Every rejection renders the same message, so the form cannot be used to
- * discover which addresses have an account.
+ * A rejected credential always renders the same message whether the address
+ * exists or not, so the form cannot be used to discover which addresses have
+ * an account. Throttling renders its own distinct notice, which is also
+ * account-agnostic: the limit is keyed by client address and path.
  */
 
 const loginSchema = z.object({

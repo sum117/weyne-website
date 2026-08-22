@@ -1,8 +1,9 @@
 import '@tanstack/react-start/server-only'
-import { betterAuth } from 'better-auth'
+import { betterAuth, type BetterAuthOptions } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
-import { accounts, sessions, users, verifications } from '@/lib/db/schema/canonical'
+import { accounts, rateLimits, sessions, users, verifications } from '@/lib/db/schema/canonical'
 import { getDatabase, type Database } from '@/lib/db/database.server'
+import { logStructuredEvent } from '@/lib/server/log-redaction'
 import { parseAuthConfig, type AuthConfig } from './config.server'
 
 /**
@@ -29,6 +30,7 @@ const authSchema = {
   session: sessions,
   account: accounts,
   verification: verifications,
+  rateLimit: rateLimits,
 } as const
 
 /**
@@ -40,7 +42,26 @@ const DEFAULT_USER_ROLE = 'read_only'
 
 export type Auth = ReturnType<typeof createAuth>
 
-export function createAuth(database: Database, config: AuthConfig) {
+/**
+ * Narrow, security-reviewed overrides for a private instance.
+ *
+ * Only the reset-delivery callback is overridable, and only so the
+ * operator-facing reset command can capture the token Better Auth mints
+ * without mutating the shared instance's options (which would race with
+ * concurrent requests). Nothing here can weaken a protection: secrets,
+ * cookie attributes, CSRF/origin checks, and rate limits are not reachable.
+ */
+export type AuthOverrides = Readonly<{
+  sendResetPassword?: NonNullable<
+    NonNullable<BetterAuthOptions['emailAndPassword']>['sendResetPassword']
+  >
+}>
+
+export function createAuth(
+  database: Database,
+  config: AuthConfig,
+  overrides: AuthOverrides = {},
+) {
   return betterAuth({
     appName: 'Weyne Representações',
     baseURL: config.baseURL,
@@ -59,6 +80,28 @@ export function createAuth(database: Database, config: AuthConfig) {
       // administrator, never self-registered from the public internet.
       disableSignUp: true,
       minPasswordLength: 12,
+      // Password reset without email delivery (this release has no mail
+      // transport). `sendResetPassword` is required for Better Auth to mint a
+      // reset token at all, so it is supplied and deliberately delivers
+      // nothing: the operator hands the link over out of band. The token
+      // itself is NEVER logged — logging it would turn the log file into a
+      // credential store.
+      sendResetPassword:
+        overrides.sendResetPassword ??
+        (async ({ user }) => {
+          logStructuredEvent({
+            kind: 'auth',
+            event: 'auth.password_reset_requested',
+            userId: user.id,
+          })
+        }),
+      // One hour. Long enough for an operator to relay the link by hand,
+      // short enough that a leaked link expires before it circulates.
+      resetPasswordTokenExpiresIn: 60 * 60,
+      // A completed reset invalidates every existing session for that
+      // identity. If the password was reset because it was compromised, the
+      // attacker's live session must not outlive the reset.
+      revokeSessionsOnPasswordReset: true,
     },
     user: {
       additionalFields: {
@@ -115,6 +158,39 @@ export function createAuth(database: Database, config: AuthConfig) {
       expiresIn: 60 * 60 * 24 * 7,
       updateAge: 60 * 60 * 24,
       cookieCache: { enabled: false },
+    },
+    rateLimit: {
+      // Explicitly ON in every environment. Better Auth enables rate limiting
+      // only in production by default, which would mean the protection was
+      // never exercised by a single test or local run — the configuration
+      // most likely to be wrong is the one nothing executes.
+      enabled: true,
+      // PostgreSQL, not the default in-process Map. The container is replaced
+      // on every release and the deployment may run more than one replica; an
+      // in-memory counter forgets an in-flight brute-force window at both
+      // boundaries. The database adapter performs a guarded atomic UPDATE, so
+      // concurrent requests cannot each pass a stale read.
+      storage: 'database',
+      modelName: 'rateLimit',
+      // Baseline for auth traffic that has no more specific rule.
+      window: 60,
+      max: 60,
+      customRules: {
+        // Credential verification. Better Auth's own default for this path is
+        // 3 attempts per 10s, which resets fast enough to allow roughly 1000
+        // guesses an hour. Ten per minute is still comfortable for a human
+        // who mistyped a password and materially slower for a script.
+        '/sign-in/email': { window: 60, max: 10 },
+        // Reset request: mints a token and, in a future release, sends mail.
+        '/request-password-reset': { window: 60 * 15, max: 5 },
+        // Token redemption is the step that actually changes a credential, so
+        // it is limited independently of the request that issued the token.
+        '/reset-password': { window: 60 * 15, max: 5 },
+        '/reset-password/*': { window: 60 * 15, max: 5 },
+        // Changing a password while signed in still proves knowledge of the
+        // current one, so it is a credential-guessing surface too.
+        '/change-password': { window: 60 * 15, max: 10 },
+      },
     },
     telemetry: { enabled: false },
   })

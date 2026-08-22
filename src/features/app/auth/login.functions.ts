@@ -1,22 +1,28 @@
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
-import type { AppSession } from '@/lib/auth/contract'
+import { AUTH_BASE_PATH, type AppSession } from '@/lib/auth/contract'
 
 /**
  * Credential login and logout for the authenticated application.
  *
- * Both endpoints delegate the security-critical work to Better Auth's own
- * server API (`auth.api.signInEmail` / `auth.api.signOut`): it hashes and
- * compares the password, mints and revokes the database-backed session row,
- * and serializes the signed cookie. This module writes no cryptography and
- * builds no cookie by hand — it only forwards Better Auth's `Set-Cookie`
- * headers onto the server-function response.
+ * Both endpoints delegate the security-critical work to Better Auth: it
+ * hashes and compares the password, mints and revokes the database-backed
+ * session row, and serializes the signed cookie. This module writes no
+ * cryptography and builds no cookie by hand — it only forwards Better Auth's
+ * `Set-Cookie` headers onto the server-function response.
  *
- * Cross-site protection comes from the framework: `src/start.ts` installs
- * TanStack Start's CSRF request middleware over every server-function call,
- * so a cross-origin POST is rejected with 403 before this handler runs. That
- * check is required here because a direct `auth.api.*` call bypasses the
- * origin validation `auth.handler` performs for `/api/auth/*` traffic.
+ * Login goes through `auth.handler(request)` rather than `auth.api.signInEmail`.
+ * That distinction is load-bearing, not stylistic: Better Auth's rate limiter
+ * runs in its ROUTER's `onRequest` hook, so a direct `auth.api.*` call is not
+ * rate limited at all. Calling the API object would have left the credential
+ * endpoint that the login form actually posts to — the only one an attacker
+ * cares about — with unlimited attempts, while `/api/auth/sign-in/email`
+ * sitting right beside it was throttled. Routing through the handler also
+ * restores Better Auth's own origin validation on this path.
+ *
+ * Cross-site protection additionally comes from the framework: `src/start.ts`
+ * installs TanStack Start's CSRF request middleware over every server-function
+ * call, so a cross-origin POST is rejected with 403 before this handler runs.
  */
 
 const credentialsSchema = z.object({
@@ -25,7 +31,11 @@ const credentialsSchema = z.object({
 })
 
 export type LoginPublicError = Readonly<{
-  code: 'INVALID_CREDENTIALS' | 'VALIDATION_FAILED' | 'INTERNAL_ERROR'
+  code:
+    | 'INVALID_CREDENTIALS'
+    | 'VALIDATION_FAILED'
+    | 'RATE_LIMITED'
+    | 'INTERNAL_ERROR'
   message: string
 }>
 
@@ -45,7 +55,49 @@ const INVALID_CREDENTIALS: LoginPublicError = Object.freeze({
   message: 'E-mail ou senha inválidos.',
 })
 
+/**
+ * Throttled. Safe to distinguish from a rejected credential: the limit is
+ * keyed by client address and path, never by account, so the message reveals
+ * nothing about whether the address exists.
+ */
+const RATE_LIMITED: LoginPublicError = Object.freeze({
+  code: 'RATE_LIMITED',
+  message: 'Muitas tentativas de acesso. Aguarde alguns instantes e tente novamente.',
+})
+
+const INTERNAL_ERROR: LoginPublicError = Object.freeze({
+  code: 'INTERNAL_ERROR',
+  message: 'Não foi possível concluir a operação. Tente novamente.',
+})
+
 const acceptUnknownInput = (input: unknown) => input
+
+/**
+ * Rebuilds the incoming server-function request as the Better Auth protocol
+ * request the browser would otherwise have posted directly.
+ *
+ * The original headers are forwarded so Better Auth sees the same `Origin`,
+ * `Cookie`, `Sec-Fetch-*`, and forwarded-address headers it would have seen
+ * on `/api/auth/sign-in/email` — its origin check and its rate-limit key both
+ * depend on them. Only the entity headers are replaced, because the body is
+ * a different one from the server-function payload.
+ */
+function toAuthProtocolRequest(
+  request: Request,
+  path: string,
+  body: unknown,
+): Request {
+  const headers = new Headers(request.headers)
+  headers.set('content-type', 'application/json')
+  headers.delete('content-length')
+  headers.delete('transfer-encoding')
+
+  return new Request(new URL(`${AUTH_BASE_PATH}${path}`, request.url), {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  })
+}
 
 export const signInWithPassword = createServerFn({ method: 'POST' })
   .validator(acceptUnknownInput)
@@ -76,12 +128,16 @@ export const signInWithPassword = createServerFn({ method: 'POST' })
 
     try {
       const auth = await getAuth()
-      const response = await auth.api.signInEmail({
-        body: { email: parsed.data.email, password: parsed.data.password },
-        headers: request.headers,
-        asResponse: true,
-      })
+      const response = await auth.handler(
+        toAuthProtocolRequest(request, '/sign-in/email', {
+          email: parsed.data.email,
+          password: parsed.data.password,
+        }),
+      )
 
+      // 429 comes from the rate limiter in the router's `onRequest`, before
+      // the credential is ever compared.
+      if (response.status === 429) return { ok: false, error: RATE_LIMITED }
       if (!response.ok) return { ok: false, error: INVALID_CREDENTIALS }
 
       const cookies = response.headers.getSetCookie()
@@ -104,20 +160,10 @@ export const signInWithPassword = createServerFn({ method: 'POST' })
 
       return { ok: true, session }
     } catch (cause) {
-      // Better Auth throws a typed APIError for a rejected credential; that is
-      // an expected outcome, not a fault, and must not be logged as one.
-      const status = (cause as { status?: unknown } | null)?.status
-      if (status === 401 || status === 403 || status === 'UNAUTHORIZED') {
-        return { ok: false, error: INVALID_CREDENTIALS }
-      }
+      // `auth.handler` converts a rejected credential into a response rather
+      // than throwing, so anything caught here is a genuine fault.
       logUnexpectedError('auth.sign-in', cause)
-      return {
-        ok: false,
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Não foi possível concluir a operação. Tente novamente.',
-        },
-      }
+      return { ok: false, error: INTERNAL_ERROR }
     }
   })
 
