@@ -69,6 +69,7 @@ async function applyCanonicalMigrations(client: Sql): Promise<void> {
     '0000_canonical_schema.sql',
     '0001_canonical_invariants.sql',
     '0002_document_logo_assets.sql',
+    '0003_millisecond_timestamp_defaults.sql',
   ])
   for (const migrationName of migrationNames) {
     await client.unsafe(await readFile(resolve(directory, migrationName), 'utf8'))
