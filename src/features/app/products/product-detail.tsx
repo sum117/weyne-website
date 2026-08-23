@@ -5,8 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { ProductFields } from './catalog.service.server'
 
-export type ProductDetailRole = 'admin' | 'representative' | 'read_only'
-
 export type ProductDetailRecord = ProductFields & Readonly<{
   id: string
   industry: string
@@ -21,7 +19,12 @@ export type ProductDetailRecord = ProductFields & Readonly<{
 
 export interface ProductDetailProps {
   product: ProductDetailRecord
-  role: ProductDetailRole
+  /**
+   * Capability-driven visibility (card `t_d3e33344`): derived by the caller
+   * from the centralized matrix (`product.update_operational`), never from a
+   * raw role comparison. UX only — the server re-checks every mutation.
+   */
+  canManage: boolean
   onEdit?: (id: string) => void
   onArchiveStateChange?: (id: string, archived: boolean) => void | Promise<void>
 }
@@ -65,8 +68,7 @@ function DetailSection({ title, items }: { title: string; items: readonly Detail
   )
 }
 
-export function ProductDetail({ product, role, onEdit, onArchiveStateChange }: ProductDetailProps) {
-  const canManage = role === 'admin'
+export function ProductDetail({ product, canManage, onEdit, onArchiveStateChange }: ProductDetailProps) {
   const archived = !product.isActive
 
   function edit() {

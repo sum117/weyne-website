@@ -18,9 +18,36 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Textarea } from '@/components/ui/textarea'
+import { hasCapability, type Role } from '@/lib/auth/capabilities'
 
-export type ProductPricingRole = 'admin' | 'representative' | 'read_only'
 export type CanonicalPriceListKey = 'PRICE_1' | 'PRICE_2' | 'PRICE_3' | 'PRICE_4'
+
+/**
+ * Everything this component shows or hides, derived ONCE from the
+ * centralized matrix (card `t_d3e33344`). The three manage/view flags are
+ * plain `hasCapability` lookups. `priceValuesVisible` encodes matrix §12/S8,
+ * a FIELD-projection rule the boolean catalog deliberately does not express:
+ * `read_only` holds `price_list.view` (catalog structure) yet receives the
+ * O-projection — no price values. Encoding it here, beside the matrix
+ * lookups and nowhere else, keeps the projection out of both the JSX and
+ * every future call site. Presentation only; the server re-checks each
+ * mutation and projects responses independently.
+ */
+export type ProductPricingCapabilities = Readonly<{
+  canManagePrices: boolean
+  canManageCommissionOverride: boolean
+  canViewPriceHistory: boolean
+  priceValuesVisible: boolean
+}>
+
+export function pricingCapabilities(role: Role): ProductPricingCapabilities {
+  return {
+    canManagePrices: hasCapability(role, 'price_list.manage'),
+    canManageCommissionOverride: hasCapability(role, 'commission_rule.manage'),
+    canViewPriceHistory: hasCapability(role, 'commission_rule.view'),
+    priceValuesVisible: role !== 'read_only',
+  }
+}
 
 export interface ProductPriceValue {
   priceListId: string
@@ -53,7 +80,16 @@ export interface SaveProductPricesInput {
 }
 
 export interface ProductPricingProps {
-  role: ProductPricingRole
+  /**
+   * The signed-in actor's role, resolved from the app session. Kept as a role
+   * (not pre-derived booleans) because this component projects THREE
+   * independent capabilities from the matrix: price editing
+   * (`price_list.manage`), commission override (`commission_rule.manage`,
+   * the canonical `product.setCommissionOverride` alias surface) and price
+   * history visibility. All lookups go through `hasCapability` — never a raw
+   * role comparison. UX only; the server re-checks every mutation.
+   */
+  role: Role
   prices: readonly ProductPriceValue[]
   commissionOverride: string | null
   industryCommission: string | null
@@ -126,7 +162,10 @@ export function ProductPricing({
   const [commissionError, setCommissionError] = React.useState<string | null>(null)
   const [isSavingPrices, setIsSavingPrices] = React.useState(false)
   const [isSavingCommission, setIsSavingCommission] = React.useState(false)
-  const canEdit = role === 'admin'
+  const capabilities = pricingCapabilities(role)
+  const { priceValuesVisible } = capabilities
+  const canEdit = capabilities.canManagePrices
+  const canSeePriceHistory = capabilities.canViewPriceHistory
 
   React.useEffect(() => {
     setDraftPrices(
@@ -247,8 +286,8 @@ export function ProductPricing({
                           id={inputId}
                           inputMode="decimal"
                           className="pl-12 font-mono tabular-nums"
-                          value={role === 'read_only' ? '' : draftPrices[price.key]}
-                          placeholder={role === 'read_only' ? 'Restrito' : 'Sem preço'}
+                          value={priceValuesVisible ? draftPrices[price.key] : ''}
+                          placeholder={priceValuesVisible ? 'Sem preço' : 'Restrito'}
                           readOnly={!canEdit}
                           onChange={
                             canEdit
@@ -356,7 +395,7 @@ export function ProductPricing({
         </Card>
       )}
 
-      {role === 'admin' && (
+      {canSeePriceHistory && (
         <Card>
           <section aria-label="Histórico de preços">
             <CardHeader>

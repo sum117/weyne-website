@@ -1,6 +1,7 @@
 import { redirect } from '@tanstack/react-router'
 import { fetchAppSession } from './session.functions'
-import { LOGIN_PATH, type AppSession } from '@/lib/auth/contract'
+import { DEFAULT_AUTHENTICATED_PATH, LOGIN_PATH, type AppSession } from '@/lib/auth/contract'
+import { hasCapability, type Capability } from '@/lib/auth/capabilities'
 
 /**
  * Route guard for every authenticated application route.
@@ -31,4 +32,35 @@ export async function requireAuthenticatedRoute(location: {
     })
   }
   return { session }
+}
+
+/**
+ * Route guard for capability-gated application routes (card `t_d3e33344`).
+ *
+ * Extends `requireAuthenticatedRoute` with one lookup against the centralized
+ * matrix (`capabilities.ts`) — the same matrix every server function enforces.
+ * UX ONLY: this decides what a route renders, never what the API accepts. A
+ * caller who slips past it hits `requireCapability()` at the server-function
+ * boundary and gains nothing.
+ *
+ * - No session → same login redirect as above.
+ * - Session without the capability → redirect to `/app` with
+ *   `?negado=<capability>` instead of a dead end, so the shell can explain
+ *   the denial in pt-BR and the user keeps navigating. The capability name is
+ *   already public vocabulary (`capabilities.ts` ships in the client bundle);
+ *   no server decision is revealed by echoing it back.
+ */
+export async function requireCapableRoute(
+  location: { href: string },
+  capability: Capability,
+): Promise<Readonly<{ session: AppSession }>> {
+  const guarded = await requireAuthenticatedRoute(location)
+  if (!hasCapability(guarded.session.user.role, capability)) {
+    throw redirect({
+      to: DEFAULT_AUTHENTICATED_PATH,
+      search: { negado: capability },
+      replace: true,
+    })
+  }
+  return guarded
 }

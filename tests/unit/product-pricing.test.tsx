@@ -10,6 +10,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   ProductPricing,
+  pricingCapabilities,
   type ProductPricingProps,
 } from '@/features/app/products/product-pricing'
 
@@ -167,6 +168,26 @@ describe('product pricing', () => {
       expect(screen.getByText('Somente leitura')).toBeInTheDocument()
     },
   )
+
+  it('derives visibility from the centralized matrix, not role comparisons', () => {
+    // Representative holds price_list.view but not commission_rule.view:
+    // current values stay visible, history does not.
+    const { unmount } = render(<ProductPricing {...baseProps} role="representative" />)
+    expect(screen.getByLabelText('Preço 1')).toHaveValue('1234567890123.123456')
+    expect(screen.queryByText(/Histórico de preços/)).not.toBeInTheDocument()
+    unmount()
+
+    // read_only receives the O-projection: structure without price values.
+    render(<ProductPricing {...baseProps} role="read_only" />)
+    expect(screen.getByLabelText('Preço 1')).toHaveValue('')
+    expect(screen.getByLabelText('Preço 1')).toHaveAttribute(
+      'placeholder',
+      'Restrito',
+    )
+    expect(pricingCapabilities('admin').canManagePrices).toBe(true)
+    expect(pricingCapabilities('representative').canManageCommissionOverride).toBe(false)
+    expect(pricingCapabilities('read_only').priceValuesVisible).toBe(false)
+  })
 
   it('shows immutable history details without edit or delete controls', () => {
     render(

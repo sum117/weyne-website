@@ -16,7 +16,10 @@ import { describe, expect, it } from 'vitest'
  */
 
 const ROUTES_DIRECTORY = resolve(process.cwd(), 'src/routes')
-const GUARD_CALL = 'requireAuthenticatedRoute(location)'
+const GUARD_CALLS = [
+  'requireAuthenticatedRoute(location)',
+  'requireCapableRoute(location',
+]
 
 async function routeFiles(): Promise<Array<{ name: string; source: string }>> {
   const entries = await readdir(ROUTES_DIRECTORY, { withFileTypes: true })
@@ -46,12 +49,15 @@ describe('authenticated route boundary', () => {
 
   it('guards every /app route with the shared server-side check', () => {
     const unguarded = applicationRoutes
-      .filter((file) => !file.source.includes(GUARD_CALL))
+      .filter(
+        (file) =>
+          !GUARD_CALLS.some((guardCall) => file.source.includes(guardCall)),
+      )
       .map((file) => file.name)
 
     expect(
       unguarded,
-      'every route under /app must call requireAuthenticatedRoute in beforeLoad',
+      'every route under /app must call a shared route guard in beforeLoad',
     ).toEqual([])
   })
 
@@ -61,7 +67,7 @@ describe('authenticated route boundary', () => {
       // anonymous visitor never sees protected markup. A component-level
       // check would flash the content first.
       expect(file.source, file.name).toMatch(
-        /beforeLoad:\s*\(\{\s*location\s*\}\)\s*=>\s*requireAuthenticatedRoute\(location\)/,
+        /beforeLoad:\s*\(\{\s*location\s*\}\)\s*=>\s*require(?:Authenticated|Capable)Route\(location/,
       )
     }
   })
@@ -70,15 +76,15 @@ describe('authenticated route boundary', () => {
     const index = files.find((file) => file.name === 'index.tsx')
     const authRoute = files.find((file) => file.name === 'api.auth.$.ts')
 
-    expect(index?.source).not.toContain(GUARD_CALL)
+    expect(index?.source).not.toContain(GUARD_CALLS[0])
     // Guarding the login endpoint itself would make signing in impossible.
-    expect(authRoute?.source).not.toContain(GUARD_CALL)
+    expect(authRoute?.source).not.toContain(GUARD_CALLS[0])
   })
 
   it('keeps the login route reachable while anonymous', () => {
     const login = files.find((file) => file.name === 'entrar.tsx')
     expect(login).toBeDefined()
-    expect(login!.source).not.toContain(GUARD_CALL)
+    expect(login!.source).not.toContain(GUARD_CALLS[0])
   })
 
   it('marks every application route noindex', () => {

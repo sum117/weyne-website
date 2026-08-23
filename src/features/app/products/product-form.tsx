@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import type { ProductFields } from './catalog.service.server'
 
-export type ProductFormRole = 'admin' | 'representative' | 'read_only'
 export type ProductFormMode = 'create' | 'edit'
 
 export type ProductFormValues = {
@@ -24,7 +23,12 @@ export type ProductSelectorOption = Readonly<{
 
 export interface ProductFormProps {
   mode: ProductFormMode
-  role: ProductFormRole
+  /**
+   * Capability-driven visibility (card `t_d3e33344`): the caller derives this
+   * from the centralized matrix (`product.update_operational`), never from a
+   * raw role comparison. UX only — the server re-checks every mutation.
+   */
+  canMutate: boolean
   archived?: boolean
   industryOptions: readonly ProductSelectorOption[]
   categoryOptions: readonly string[]
@@ -218,7 +222,7 @@ function ProductField({ id, label, description, errors, children }: ProductField
 
 export function ProductForm({
   mode,
-  role,
+  canMutate: mayManage,
   archived = false,
   industryOptions,
   categoryOptions,
@@ -228,7 +232,7 @@ export function ProductForm({
   serverError = null,
 }: ProductFormProps) {
   const idPrefix = `product-${React.useId()}`
-  const canMutate = role === 'admin' && !archived
+  const canMutate = mayManage && !archived
   const form = useForm({
     defaultValues: formDefaults(initialValues),
     validators: { onBlur: productFormSchema, onSubmit: productFormSchema },
@@ -238,7 +242,7 @@ export function ProductForm({
     },
   })
 
-  if (role !== 'admin') {
+  if (!mayManage) {
     return (
       <Alert variant="destructive" role="alert">
         <AlertTitle>Acesso somente para leitura</AlertTitle>

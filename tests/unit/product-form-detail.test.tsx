@@ -10,6 +10,16 @@ import {
   ProductForm,
   type ProductFormProps,
 } from '@/features/app/products/product-form'
+import { hasCapability, type Role } from '@/lib/auth/capabilities'
+
+/**
+ * Card `t_d3e33344`: components no longer take a raw role and compare it to
+ * `'admin'`; callers derive visibility flags from the centralized matrix.
+ * These helpers are exactly what a route does, so the suite exercises the
+ * same wiring production uses.
+ */
+const canManageProducts = (role: Role) =>
+  hasCapability(role, 'product.update_operational')
 
 const industryOptions = [
   { value: '11111111-1111-4111-8111-111111111111', label: 'Indústria Ativa' },
@@ -62,7 +72,7 @@ describe('product create and edit form', () => {
     render(
       <ProductForm
         mode="create"
-        role="admin"
+        canMutate={canManageProducts('admin')}
         industryOptions={industryOptions}
         categoryOptions={['Limpeza profissional']}
         brandOptions={['Marca Azul']}
@@ -87,7 +97,7 @@ describe('product create and edit form', () => {
     render(
       <ProductForm
         mode="create"
-        role="admin"
+        canMutate={canManageProducts('admin')}
         industryOptions={industryOptions}
         categoryOptions={['Limpeza profissional', 'Descartáveis']}
         brandOptions={['Marca Azul', 'Marca Areia']}
@@ -124,7 +134,7 @@ describe('product create and edit form', () => {
     render(
       <ProductForm
         mode="edit"
-        role="admin"
+        canMutate={canManageProducts('admin')}
         industryOptions={industryOptions}
         categoryOptions={[]}
         brandOptions={[]}
@@ -145,7 +155,7 @@ describe('product create and edit form', () => {
     const { rerender } = render(
       <ProductForm
         mode="create"
-        role="admin"
+        canMutate={canManageProducts('admin')}
         industryOptions={industryOptions}
         categoryOptions={[]}
         brandOptions={[]}
@@ -157,7 +167,7 @@ describe('product create and edit form', () => {
     rerender(
       <ProductForm
         mode="edit"
-        role="admin"
+        canMutate={canManageProducts('admin')}
         industryOptions={industryOptions}
         categoryOptions={[]}
         brandOptions={[]}
@@ -174,7 +184,7 @@ describe('product create and edit form', () => {
     const { container } = render(
       <ProductForm
         mode="edit"
-        role={role}
+        canMutate={canManageProducts(role)}
         industryOptions={industryOptions}
         categoryOptions={[]}
         brandOptions={[]}
@@ -194,7 +204,7 @@ describe('product create and edit form', () => {
     render(
       <ProductForm
         mode="edit"
-        role="admin"
+        canMutate={canManageProducts('admin')}
         archived
         industryOptions={industryOptions}
         categoryOptions={[]}
@@ -212,7 +222,12 @@ describe('product create and edit form', () => {
 
 describe('product detail', () => {
   it('renders exact read-only values in responsive grouped sections without media controls', () => {
-    render(<ProductDetail product={detailRecord} role="representative" />)
+    render(
+      <ProductDetail
+        product={detailRecord}
+        canManage={canManageProducts('representative')}
+      />
+    )
 
     expect(screen.getByRole('heading', { name: 'Desinfetante concentrado' })).toBeVisible()
     expect(screen.getByText('0.123456 kg')).toBeVisible()
@@ -233,7 +248,7 @@ describe('product detail', () => {
           isActive: false,
           archivedAt: '2026-08-17T14:00:00.000Z',
         }}
-        role="admin"
+        canManage={canManageProducts('admin')}
         onEdit={vi.fn()}
         onArchiveStateChange={onArchiveStateChange}
       />,
