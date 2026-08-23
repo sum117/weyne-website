@@ -1,5 +1,8 @@
 import { logUnexpectedError } from '@/lib/server/log-redaction'
 import { createServerFn } from '@tanstack/react-start'
+import { z } from 'zod'
+import { ForbiddenError, UnauthenticatedError } from '@/lib/auth/authorization.server'
+import { requireCommercialContext } from '@/lib/auth/commercial-scope.server'
 import type { CommercialActor } from '@/lib/orders/security-policy.server'
 import {
   CommissionRequestError,
@@ -10,11 +13,13 @@ import {
 /**
  * Authorized commissions report endpoint for `/app/relatorios?tab=comissoes`.
  *
- * Authorization is re-evaluated server-side on every call; the UI never
- * decides it. Authentication fails closed until the authenticated app session
- * adapter is connected (same posture as the order/carrier functions). The
- * request is bounded by `normalizeCommissionRequest` — a caller cannot ask
- * for the full dataset.
+ * The caller is re-derived from the request cookie on every call and the
+ * centralized capability matrix gates the endpoint; the UI never decides it.
+ * Role projection mirrors the canonical metric owner predicate:
+ * representatives see their own quotes; read-only users see only explicitly
+ * assigned representatives and never commission values. The request is
+ * bounded by `normalizeCommissionRequest` — a caller cannot ask for the full
+ * dataset.
  *
  * All server-only work stays lexically inside the `.handler` callback so the
  * TanStack Start compiler can strip it from the client bundle (RPC bridge);
@@ -65,12 +70,36 @@ export function projectReportRequest(actor: CommercialActor): Readonly<{
   }
 }
 
-/** Fails closed until the authenticated session adapter exists. */
-function authenticate(): CommercialActor | null {
-  return null
+/**
+ * Resolves the caller from the request cookie through the centralized matrix.
+ * Returns null (→ public UNAUTHENTICATED) for anonymous callers. Reports are
+ * an order-domain read: `order.view` is the capability every role holds, and
+ * per-role narrowing happens in `projectReportRequest` plus the metric query.
+ */
+async function authenticate(): Promise<CommercialActor | null> {
+  try {
+    const context = await requireCommercialContext('order', 'order.view')
+    return { id: context.session.id, role: context.session.role, tenantId: context.tenantId }
+  } catch (cause) {
+    if (cause instanceof ForbiddenError || cause instanceof UnauthenticatedError) {
+      return null
+    }
+    throw cause
+  }
 }
 
-const acceptUnknownInput = (input: unknown) => input
+const acceptUnknownInput = z.unknown()
+
+const commissionReportInputSchema = z.object({
+  offset: z.coerce.number().int().min(0).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  sort: z.any().nullable().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  timeZone: z.string().optional(),
+  statuses: z.array(z.string()).optional(),
+  representativeIds: z.array(z.string()).optional(),
+}).passthrough()
 
 export const getCommissionReport = createServerFn({ method: 'GET' })
   .validator(acceptUnknownInput)
@@ -80,7 +109,15 @@ export const getCommissionReport = createServerFn({ method: 'GET' })
     const { getDatabase } = await import('@/lib/db/database.server')
     const { loadCommissionPage } = await import('./commission-report.server')
 
-    const actor = authenticate()
+    const parsed = commissionReportInputSchema.safeParse(data ?? {})
+    if (!parsed.success) {
+      return {
+        ok: false,
+        error: { code: 'VALIDATION_FAILED', status: 400, message: 'Os filtros do relatório são inválidos.' },
+      }
+    }
+
+    const actor = await authenticate()
     if (!actor) {
       return {
         ok: false,
@@ -89,7 +126,7 @@ export const getCommissionReport = createServerFn({ method: 'GET' })
     }
 
     try {
-      const raw = (data ?? {}) as Record<string, unknown>
+      const raw = parsed.data as Record<string, unknown>
       const projected = projectReportRequest(actor)
       const request = normalizeCommissionRequest({
         offset: Number(raw.offset ?? 0),
