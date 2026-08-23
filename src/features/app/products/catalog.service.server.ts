@@ -411,7 +411,7 @@ export function createProductCatalogService(database: Database, options: Service
         if (!merged.ok) return merged
         const assignments = entries.map(([field, value]) => sql`${sql.identifier(columns[field])} = ${value}`)
         const rows = await executeRows<{ id: string }>(tx, sql`
-          UPDATE products SET ${sql.join(assignments, sql`, `)}, updated_at = clock_timestamp(), updated_by = ${actor.id}
+          UPDATE products SET ${sql.join(assignments, sql`, `)}, updated_at = date_trunc('milliseconds', clock_timestamp()), updated_by = ${actor.id}
           WHERE id = ${request.data.id} RETURNING id
         `)
         if (!rows[0]) return failure(notFound())
@@ -436,8 +436,8 @@ export function createProductCatalogService(database: Database, options: Service
         const existing = await readOne(request.data.id, tx)
         if (!existing.ok) return existing
         const rows = await executeRows<{ id: string }>(tx, request.data.archived
-          ? sql`UPDATE products SET archived_at = clock_timestamp(), archived_by = ${actor.id}, updated_at = clock_timestamp(), updated_by = ${actor.id} WHERE id = ${request.data.id} RETURNING id`
-          : sql`UPDATE products SET archived_at = NULL, archived_by = NULL, updated_at = clock_timestamp(), updated_by = ${actor.id} WHERE id = ${request.data.id} RETURNING id`)
+          ? sql`UPDATE products SET archived_at = date_trunc('milliseconds', clock_timestamp()), archived_by = ${actor.id}, updated_at = date_trunc('milliseconds', clock_timestamp()), updated_by = ${actor.id} WHERE id = ${request.data.id} RETURNING id`
+          : sql`UPDATE products SET archived_at = NULL, archived_by = NULL, updated_at = date_trunc('milliseconds', clock_timestamp()), updated_by = ${actor.id} WHERE id = ${request.data.id} RETURNING id`)
         if (!rows[0]) return failure(notFound())
         const archived = await readOne(rows[0].id, tx)
         if (!archived.ok) return archived

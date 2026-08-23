@@ -230,8 +230,8 @@ describe('carrier persistence on PostgreSQL', () => {
         customer_snapshot, commercial_snapshot, carrier_id
       ) VALUES (
         ${quoteId}, 'ORC-2026-000001', 'owner-1', 'draft', '2026-09-30', 1,
-        ${JSON.stringify({ id: 'customer-1' })}::jsonb,
-        ${JSON.stringify({ lines: [] })}::jsonb,
+        ${JSON.stringify({ id: 'customer-1' })}::text::jsonb,
+        ${JSON.stringify({ lines: [] })}::text::jsonb,
         ${carrier.id}
       )
     `

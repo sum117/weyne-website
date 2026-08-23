@@ -1,5 +1,6 @@
 import { logUnexpectedError } from '@/lib/server/log-redaction'
 import { createServerFn } from '@tanstack/react-start'
+import { getAppSession } from '@/lib/auth/session.server'
 import { createPostgresIndustryPersistence } from '@/domain/industries/repository.server'
 import {
   createIndustryMutationService,
@@ -144,8 +145,13 @@ async function getIndustryMutationService(): Promise<IndustryMutationServiceCont
   const persistence = createPostgresIndustryPersistence(database)
   return createIndustryMutationService({
     ...persistence,
-    // Fail closed until the authenticated app session adapter is connected.
-    authenticate: async () => null,
+    // The actor is re-derived from the Better Auth request cookie on every
+    // call; the service then consults its catalog authorization table, so a
+    // forged payload can never supply an identity.
+    authenticate: async () => {
+      const session = await getAppSession()
+      return session ? { id: session.user.id, role: session.user.role } : null
+    },
     createId: () => crypto.randomUUID(),
     now: () => new Date(),
   })

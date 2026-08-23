@@ -1,5 +1,6 @@
 import { logUnexpectedError } from '@/lib/server/log-redaction'
 import { createServerFn } from '@tanstack/react-start'
+import { getAppSession } from '@/lib/auth/session.server'
 import { createCarrierPersistence } from '@/domain/carriers/repository.server'
 import {
   createCarrierService,
@@ -157,9 +158,13 @@ async function getCarrierService(): Promise<CarrierServiceContract> {
   const persistence = createCarrierPersistence(database)
   return createCarrierService({
     ...persistence,
-    // Fail closed until the authenticated app session adapter is connected.
-    // Tests and application composition inject the existing RBAC actor explicitly.
-    authenticate: async () => null,
+    // The actor is re-derived from the Better Auth request cookie on every
+    // call; the service then consults its catalog authorization table, so a
+    // forged payload can never supply an identity.
+    authenticate: async () => {
+      const session = await getAppSession()
+      return session ? { id: session.user.id, role: session.user.role } : null
+    },
     createId: () => crypto.randomUUID(),
     now: () => new Date(),
   })
