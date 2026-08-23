@@ -40,6 +40,51 @@ describe('production SSR container packaging', () => {
     expect(compose).not.toContain('CLOUDFLARE_TUNNEL_TOKEN')
   })
 
+  it('keeps the staging stack private, secret-injected, and readiness-gated', async () => {
+    const compose = await readProjectFile('deploy/docker-compose.staging.yml')
+    const example = await readProjectFile('deploy/.env.staging.example')
+
+    // No public ports anywhere in the staging topology.
+    expect(compose).not.toMatch(/ports:/)
+    expect(compose).toContain('internal: true')
+    expect(compose.match(/networks:/g)?.length).toBeGreaterThanOrEqual(3)
+
+    // Credentials arrive only through the env file; no defaults.
+    for (const variable of [
+      'POSTGRES_PASSWORD',
+      'S3_SECRET_ACCESS_KEY',
+      'CLOUDFLARE_TUNNEL_TOKEN',
+      'BETTER_AUTH_SECRET',
+      'BETTER_AUTH_URL',
+    ]) {
+      expect(compose).toContain(`\${${variable}:?set ${variable} in .env.staging}`)
+    }
+    expect(example).not.toContain('weyne-local-secret-change-me')
+
+    // Readiness distinguishes dependencies from liveness.
+    expect(compose).toContain('/readyz')
+    expect(compose).toContain('/healthz')
+    expect(compose).toContain('service_completed_successfully')
+  })
+
+  it('injects fail-closed authentication configuration into the production app', async () => {
+    const compose = await readProjectFile('deploy/docker-compose.weyne.yml')
+    const example = await readProjectFile('deploy/.env.weyne.example')
+
+    for (const variable of ['BETTER_AUTH_SECRET', 'BETTER_AUTH_URL']) {
+      expect(compose).toContain(`\${${variable}:?set ${variable} in .env.weyne}`)
+      expect(example).toContain(`${variable}=`)
+    }
+    // Production behavior is what makes the configuration fail closed.
+    expect(compose).toContain('NODE_ENV: production')
+    // The example ships an empty secret and an https origin, never a value.
+    expect(example).toMatch(/^BETTER_AUTH_SECRET=\s*$/m)
+    expect(example).toMatch(/^BETTER_AUTH_URL=https:\/\//m)
+    // Auth configuration is server-only; a VITE_ prefix would publish it.
+    expect(compose).not.toMatch(/VITE_[A-Z_]*(?:AUTH|SECRET)/)
+    expect(example).not.toMatch(/VITE_[A-Z_]*(?:AUTH|SECRET)/)
+  })
+
   it('runs a browser-backed production stack smoke check in CI', async () => {
     const packageJson = await readProjectFile('package.json')
     const smokeConfig = await readProjectFile('playwright.production.config.ts')
