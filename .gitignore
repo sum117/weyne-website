@@ -47,3 +47,4 @@ Thumbs.db
 .hermes/
 .hermes-tmp.*
 **/.hermes-tmp.*
+.workflow-db-url.txt
