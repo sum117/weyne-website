@@ -1,6 +1,11 @@
 import { logUnexpectedError } from '@/lib/server/log-redaction'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
+import {
+  ForbiddenError,
+  UnauthenticatedError,
+} from '@/lib/auth/authorization.server'
+import { requireCommercialContext } from '@/lib/auth/commercial-scope.server'
 import { getDatabase } from '@/lib/db/database.server'
 import { parseRequest } from '@/lib/server/request.schema'
 import {
@@ -15,16 +20,12 @@ import { buildSalesReportPage, type SalesReportPage } from './report-page'
 
 /**
  * Authorized sales-report page endpoint. The handler re-derives the actor's
- * metric scope server-side (role + representative allowlist), loads the
+ * session from the request cookie through the centralized matrix, then the
+ * metric scope (role + representative allowlist) server-side, loads the
  * canonical snapshot through `loadPostgresReportMetrics`, and projects one
  * bounded page. The client never receives rows outside its scope and never
  * receives the full dataset: the request contract caps pages at
  * `MAX_REPORT_PAGE_SIZE` and the projection slices server-side.
- *
- * Authentication fails closed until the authenticated app session adapter is
- * connected, matching `order.functions.ts`. The full composition below is
- * exercised by tests and becomes live the moment `authenticate` resolves a
- * real actor.
  */
 
 const groupingSchema = z.enum(['clientes', 'produtos', 'industrias'])
@@ -260,9 +261,48 @@ const reportOperations = createReportDataOperations({
 
 const acceptUnknownInput = (input: unknown) => input
 
-/** Fails closed until the authenticated session adapter exists. */
-function authenticate(): ReportActorScope | null {
-  return null
+/**
+ * Resolves the caller from the request cookie through the centralized
+ * matrix. Reports are an order-domain read (`order.view`); per-role row
+ * narrowing happens in `resolveRequestedRepresentatives` /
+ * `narrowReportScope` before any query runs.
+ */
+async function authenticate(): Promise<ReportActorScope | null> {
+  try {
+    const context = await requireCommercialContext('order', 'order.view')
+    return {
+      role: context.session.role,
+      actorRepresentativeId:
+        context.session.role === 'representative' ? context.session.id : null,
+      // read_only assignment resolution joins commercial_resource_assignments
+      // at the metrics layer; empty here means "no rows", never "all rows".
+      readableRepresentativeIds:
+        context.session.role === 'read_only'
+          ? await loadReadableReportRepresentatives(context)
+          : [],
+    }
+  } catch (cause) {
+    if (cause instanceof ForbiddenError || cause instanceof UnauthenticatedError) {
+      return null
+    }
+    throw cause
+  }
+}
+
+/** Explicit representative assignments for read_only actors. */
+async function loadReadableReportRepresentatives(
+  context: Awaited<ReturnType<typeof requireCommercialContext>>,
+): Promise<readonly string[]> {
+  const { getDatabase } = await import('@/lib/db/database.server')
+  const { loadAssignedOrderOwners } = await import(
+    '@/features/app/reports/report-assignments.server'
+  )
+  try {
+    return await loadAssignedOrderOwners(await getDatabase(), context.session.id)
+  } catch (cause) {
+    logUnexpectedError('report.page', cause)
+    return []
+  }
 }
 
 export const loadReportPage = createServerFn({ method: 'GET' })
@@ -284,7 +324,7 @@ export const loadReportPage = createServerFn({ method: 'GET' })
       }
     }
 
-    const scope = authenticate()
+    const scope = await authenticate()
     if (!scope) {
       return {
         ok: false,
