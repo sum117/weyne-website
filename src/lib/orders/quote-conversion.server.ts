@@ -8,6 +8,7 @@ import type {
 } from '@/lib/orders/repository.server'
 import { buildOrderCommissionFacts } from '@/lib/orders/commission-facts.server'
 import { verifyOrderTotals } from '@/lib/orders/total-verification.server'
+import { evaluateQuoteCommand } from '@/lib/quotes/command-authorization'
 import type { QuoteActor, QuoteStatus } from '@/lib/quotes/quote-repository.server'
 
 export type QuoteConversionSnapshot = Readonly<{
@@ -154,7 +155,7 @@ export function createPostgresQuoteConversionService(options: {
 
         const [updated] = await tx<QuoteRow[]>`
           UPDATE quotes
-          SET status = 'converted', version = version + 1, updated_at = clock_timestamp()
+          SET status = 'converted', version = version + 1, updated_at = date_trunc('milliseconds', clock_timestamp())
           WHERE id = ${quote.id} AND status = 'approved' AND version = ${quote.version}
           RETURNING
             id,
@@ -182,8 +183,8 @@ export function createPostgresQuoteConversionService(options: {
               'status', ${updated.status}::text,
               'validUntil', ${updated.validUntil}::text,
               'version', ${updated.version}::integer,
-              'customerSnapshot', ${JSON.stringify(updated.customerSnapshot)}::jsonb,
-              'commercialSnapshot', ${JSON.stringify(updated.commercialSnapshot)}::jsonb
+              'customerSnapshot', ${JSON.stringify(updated.customerSnapshot)}::text::jsonb,
+              'commercialSnapshot', ${JSON.stringify(updated.commercialSnapshot)}::text::jsonb
             )
           )
         `
@@ -224,7 +225,7 @@ async function createOrder(
   actorId: string,
 ): Promise<PersistedOrder> {
   const [clock] = await tx<Array<{ occurredAt: Date; year: number }>>`
-    SELECT clock_timestamp() AS "occurredAt",
+    SELECT date_trunc('milliseconds', clock_timestamp()) AS "occurredAt",
            extract(year FROM transaction_timestamp() AT TIME ZONE 'America/Fortaleza')::integer AS year
   `
   if (!clock) throw new QuoteConversionError('SNAPSHOT_INTEGRITY_ERROR')
@@ -353,8 +354,18 @@ async function lockQuote(tx: Sql, quoteId: string): Promise<QuoteRow | null> {
 }
 
 function assertAuthorized(quote: QuoteRow, actor: QuoteActor): void {
-  const allowed = actor.role === 'admin' || (actor.role === 'representative' && actor.id === quote.ownerUserId)
-  if (!allowed) throw new QuoteConversionError('FORBIDDEN')
+  // Centralized matrix decision (command-authorization.ts): `quote.convert`
+  // capability first, then own-assigned record scope; admin acts anywhere.
+  const decision = evaluateQuoteCommand({
+    actor,
+    ownerUserId: quote.ownerUserId,
+    command: 'convertQuote',
+  })
+  if (decision !== 'allow') {
+    // Out-of-scope or denied conversions must be indistinguishable from a
+    // missing quote whenever visibility was never established.
+    throw new QuoteConversionError(decision === 'forbidden' ? 'FORBIDDEN' : 'QUOTE_NOT_FOUND')
+  }
 }
 
 async function findCommand(tx: Sql, commandId: string): Promise<CommandRow | null> {
@@ -405,7 +416,7 @@ async function completeCommand(
     INSERT INTO quote_conversion_commands (
       command_id, payload_hash, quote_id, order_id, completed_at
     ) VALUES (
-      ${input.commandId}, ${input.payloadHash}, ${input.quoteId}, ${input.orderId}, clock_timestamp()
+      ${input.commandId}, ${input.payloadHash}, ${input.quoteId}, ${input.orderId}, date_trunc('milliseconds', clock_timestamp())
     )
     ON CONFLICT (command_id) DO UPDATE
     SET order_id = EXCLUDED.order_id, completed_at = EXCLUDED.completed_at

@@ -280,7 +280,7 @@ export function createPostgresCommercialSecurityService(options: {
           SET tenant_id = EXCLUDED.tenant_id,
               owner_user_id = EXCLUDED.owner_user_id,
               resource_status = EXCLUDED.resource_status,
-              updated_at = clock_timestamp()
+              updated_at = date_trunc('milliseconds', clock_timestamp())
         `
         await tx`
           DELETE FROM commercial_resource_assignments
@@ -497,7 +497,7 @@ export function createPostgresCommercialSecurityService(options: {
         await storage.delete(current.objectKey)
         const updated = await tx<{ id: string }[]>`
           UPDATE secure_order_attachments
-          SET deleted_at = clock_timestamp(), deleted_by = ${actor.id}
+          SET deleted_at = date_trunc('milliseconds', clock_timestamp()), deleted_by = ${actor.id}
           WHERE id = ${attachmentId}::uuid
             AND order_id = ${orderId}::uuid
             AND tenant_id = ${actor.tenantId}::uuid

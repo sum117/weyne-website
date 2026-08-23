@@ -5,6 +5,13 @@ import {
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import {
+  DENIAL_MESSAGES,
+  ForbiddenError,
+  UnauthenticatedError,
+} from '@/lib/auth/authorization.server'
+import type { Capability } from '@/lib/auth/capabilities'
+import { requireCommercialContext } from '@/lib/auth/commercial-scope.server'
+import {
   AttachmentApiError,
   createOrderAttachmentService,
   toPublicOrderAttachment,
@@ -18,15 +25,14 @@ import { getDatabase } from '@/lib/db/database.server'
 
 /**
  * Authorized order attachment endpoints: list, upload, download, and delete.
- * Every operation re-evaluates order scope and role on the server through the
- * attachment service; the UI never decides authorization. Downloads stream
- * privately through the authenticated server process — no public or signed
- * object URL is ever produced, persisted, or sent to the browser.
- *
- * Authentication fails closed until the authenticated app session adapter is
- * connected, matching the established pattern in the order/quote-PDF
- * functions. The full service composition below is exercised by tests and
- * becomes live the moment `authenticate` resolves a real actor.
+ * Every call re-derives the session from the request cookie, checks the
+ * centralized capability matrix (`order.view_attachment` / `order.add_attachment`
+ * / `order.remove_attachment`), and re-evaluates order scope server-side
+ * through the attachment service; the UI never decides authorization.
+ * Downloads stream privately through the authenticated server process — no
+ * public or signed object URL is ever produced, persisted, or sent to the
+ * browser. Out-of-scope orders resolve as NOT_FOUND so IDs cannot be
+ * enumerated; in-scope denials carry the fixed pt-BR FORBIDDEN message.
  */
 
 const orderIdSchema = z.object({ orderId: z.string().uuid() })
@@ -138,9 +144,14 @@ function toPublicError(error: unknown): OrderAttachmentPublicError {
   }
 }
 
-/** Fails closed until the authenticated session adapter exists. */
-function authenticate(): AttachmentActor | null {
-  return null
+/**
+ * Resolves the caller from the request cookie and checks the attachment
+ * capability for the operation. 401 when no session exists; 403 (fixed pt-BR)
+ * when authenticated without the capability.
+ */
+async function authenticate(capability: Capability): Promise<AttachmentActor> {
+  const context = await requireCommercialContext('order', capability)
+  return { id: context.session.id, role: context.session.role }
 }
 
 async function getAttachmentService() {
@@ -188,6 +199,36 @@ async function invoke<T>(operation: AttachmentOperation<T>) {
 
 const acceptUnknownInput = (input: unknown) => input
 
+/**
+ * Runs the handler body with an authenticated actor, mapping the 401 error to
+ * the public unauthenticated result. Authorization failures inside
+ * `authenticate` propagate as ForbiddenError and are mapped per-endpoint.
+ */
+async function withActor<T>(
+  capability: Capability,
+  run: (actor: AttachmentActor) => Promise<T>,
+): Promise<T | { ok: false; error: OrderAttachmentPublicError }> {
+  try {
+    const actor = await authenticate(capability)
+    return await run(actor)
+  } catch (cause) {
+    if (cause instanceof UnauthenticatedError) {
+      return { ok: false as const, error: UNAUTHENTICATED_ERROR }
+    }
+    if (cause instanceof ForbiddenError) {
+      return {
+        ok: false as const,
+        error: {
+          code: 'FORBIDDEN' as const,
+          status: 403 as const,
+          message: DENIAL_MESSAGES.FORBIDDEN,
+        },
+      }
+    }
+    throw cause
+  }
+}
+
 export type OrderAttachmentListItem = PublicOrderAttachment
 
 export type ListAttachmentsResult =
@@ -196,24 +237,21 @@ export type ListAttachmentsResult =
 
 export const listOrderAttachments = createServerFn({ method: 'GET' })
   .validator(acceptUnknownInput)
-  .handler(async ({ data }: { data: unknown }): Promise<ListAttachmentsResult> => {
-    const actor = authenticate()
-    if (!actor) {
-      return { ok: false, error: UNAUTHENTICATED_ERROR }
-    }
-    const parsed = orderIdSchema.safeParse(data)
-    if (!parsed.success) {
-      return { ok: false, error: toPublicError(new AttachmentApiError('INVALID_REQUEST')) }
-    }
-    const result = await invoke((service) =>
-      service.list({ actor, orderId: parsed.data.orderId }),
-    )
-    if (!result.ok) return result
-    return {
-      ok: true,
-      attachments: result.data.map(toPublicOrderAttachment),
-    }
-  })
+  .handler(async ({ data }: { data: unknown }): Promise<ListAttachmentsResult> =>
+    withActor('order.view_attachment', async (actor) => {
+      const parsed = orderIdSchema.safeParse(data)
+      if (!parsed.success) {
+        return { ok: false, error: toPublicError(new AttachmentApiError('INVALID_REQUEST')) }
+      }
+      const result = await invoke((service) =>
+        service.list({ actor, orderId: parsed.data.orderId }),
+      )
+      if (!result.ok) return result
+      return {
+        ok: true,
+        attachments: result.data.map(toPublicOrderAttachment),
+      }
+    }))
 
 export type UploadAttachmentResult =
   | { ok: true; attachment: OrderAttachmentListItem }
@@ -221,33 +259,30 @@ export type UploadAttachmentResult =
 
 export const uploadOrderAttachment = createServerFn({ method: 'POST' })
   .validator(acceptUnknownInput)
-  .handler(async ({ data }: { data: unknown }): Promise<UploadAttachmentResult> => {
-    const actor = authenticate()
-    if (!actor) {
-      return { ok: false, error: UNAUTHENTICATED_ERROR }
-    }
-    const parsed = uploadInputSchema.safeParse(data)
-    if (!parsed.success) {
-      return { ok: false, error: toPublicError(new AttachmentApiError('INVALID_REQUEST')) }
-    }
-    const input = parsed.data
-    const bytes = Uint8Array.from(Buffer.from(input.bytesBase64, 'base64'))
-    const result = await invoke((service) =>
-      service.upload({
-        actor,
-        orderId: input.orderId,
-        idempotencyKey: input.idempotencyKey,
-        label: input.label,
-        originalFilename: input.originalFilename,
-        declaredMimeType: input.declaredMimeType,
-        declaredSizeBytes: input.declaredSizeBytes,
-        declaredChecksumSha256: input.declaredChecksumSha256,
-        bytes,
-      }),
-    )
-    if (!result.ok) return result
-    return { ok: true, attachment: toPublicOrderAttachment(result.data) }
-  })
+  .handler(async ({ data }: { data: unknown }): Promise<UploadAttachmentResult> =>
+    withActor('order.add_attachment', async (actor) => {
+      const parsed = uploadInputSchema.safeParse(data)
+      if (!parsed.success) {
+        return { ok: false, error: toPublicError(new AttachmentApiError('INVALID_REQUEST')) }
+      }
+      const input = parsed.data
+      const bytes = Uint8Array.from(Buffer.from(input.bytesBase64, 'base64'))
+      const result = await invoke((service) =>
+        service.upload({
+          actor,
+          orderId: input.orderId,
+          idempotencyKey: input.idempotencyKey,
+          label: input.label,
+          originalFilename: input.originalFilename,
+          declaredMimeType: input.declaredMimeType,
+          declaredSizeBytes: input.declaredSizeBytes,
+          declaredChecksumSha256: input.declaredChecksumSha256,
+          bytes,
+        }),
+      )
+      if (!result.ok) return result
+      return { ok: true, attachment: toPublicOrderAttachment(result.data) }
+    }))
 
 export type DownloadAttachmentResult =
   | {
@@ -267,33 +302,30 @@ export type DownloadAttachmentResult =
  */
 export const downloadOrderAttachment = createServerFn({ method: 'GET' })
   .validator(acceptUnknownInput)
-  .handler(async ({ data }: { data: unknown }): Promise<DownloadAttachmentResult> => {
-    const actor = authenticate()
-    if (!actor) {
-      return { ok: false, error: UNAUTHENTICATED_ERROR }
-    }
-    const parsed = attachmentTargetSchema.safeParse(data)
-    if (!parsed.success) {
-      return { ok: false, error: toPublicError(new AttachmentApiError('INVALID_REQUEST')) }
-    }
-    const result = await invoke((service) =>
-      service.download({
-        actor,
-        orderId: parsed.data.orderId,
-        attachmentId: parsed.data.attachmentId,
-      }),
-    )
-    if (!result.ok) return result
-    const { attachment, bytes } = result.data
-    return {
-      ok: true,
-      file: {
-        bytesBase64: Buffer.from(bytes).toString('base64'),
-        filename: attachment.originalFilename,
-        contentType: attachment.validatedMimeType,
-      },
-    }
-  })
+  .handler(async ({ data }: { data: unknown }): Promise<DownloadAttachmentResult> =>
+    withActor('order.view_attachment', async (actor) => {
+      const parsed = attachmentTargetSchema.safeParse(data)
+      if (!parsed.success) {
+        return { ok: false, error: toPublicError(new AttachmentApiError('INVALID_REQUEST')) }
+      }
+      const result = await invoke((service) =>
+        service.download({
+          actor,
+          orderId: parsed.data.orderId,
+          attachmentId: parsed.data.attachmentId,
+        }),
+      )
+      if (!result.ok) return result
+      const { attachment, bytes } = result.data
+      return {
+        ok: true,
+        file: {
+          bytesBase64: Buffer.from(bytes).toString('base64'),
+          filename: attachment.originalFilename,
+          contentType: attachment.validatedMimeType,
+        },
+      }
+    }))
 
 export type DeleteAttachmentResult =
   | { ok: true }
@@ -301,24 +333,21 @@ export type DeleteAttachmentResult =
 
 export const deleteOrderAttachment = createServerFn({ method: 'POST' })
   .validator(acceptUnknownInput)
-  .handler(async ({ data }: { data: unknown }): Promise<DeleteAttachmentResult> => {
-    const actor = authenticate()
-    if (!actor) {
-      return { ok: false, error: UNAUTHENTICATED_ERROR }
-    }
-    const parsed = attachmentTargetSchema.safeParse(data)
-    const idempotencyKey = parsed.success ? parsed.data.idempotencyKey : undefined
-    if (!parsed.success || !idempotencyKey) {
-      return { ok: false, error: toPublicError(new AttachmentApiError('IDEMPOTENCY_KEY_REQUIRED')) }
-    }
-    const result = await invoke((service) =>
-      service.delete({
-        actor,
-        orderId: parsed.data.orderId,
-        attachmentId: parsed.data.attachmentId,
-        idempotencyKey,
-      }),
-    )
-    if (!result.ok) return result
-    return { ok: true }
-  })
+  .handler(async ({ data }: { data: unknown }): Promise<DeleteAttachmentResult> =>
+    withActor('order.remove_attachment', async (actor) => {
+      const parsed = attachmentTargetSchema.safeParse(data)
+      const idempotencyKey = parsed.success ? parsed.data.idempotencyKey : undefined
+      if (!parsed.success || !idempotencyKey) {
+        return { ok: false, error: toPublicError(new AttachmentApiError('IDEMPOTENCY_KEY_REQUIRED')) }
+      }
+      const result = await invoke((service) =>
+        service.delete({
+          actor,
+          orderId: parsed.data.orderId,
+          attachmentId: parsed.data.attachmentId,
+          idempotencyKey,
+        }),
+      )
+      if (!result.ok) return result
+      return { ok: true }
+    }))

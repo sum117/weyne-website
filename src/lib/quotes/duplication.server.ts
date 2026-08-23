@@ -1,8 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto'
 import {
-  isQuoteMutationAuthorized,
-  type QuoteMutationActor,
-} from './authorization.server'
+  isQuoteCommandAuthorized,
+  type ScopedCommandActor,
+} from './command-authorization'
 import type { QuoteStatus } from './lifecycle.server'
 
 export type QuoteDuplicationErrorCode =
@@ -81,7 +81,7 @@ export interface QuoteDuplicationEvent {
   readonly quoteId: string
   readonly sourceQuoteId: string
   readonly actorId: string
-  readonly actorRole: QuoteMutationActor['role']
+  readonly actorRole: ScopedCommandActor['role']
   readonly eventType: 'quote_duplicated'
   readonly occurredAt: Date
   readonly idempotencyKey: string
@@ -230,7 +230,7 @@ export function createQuoteDuplicationService(options: {
   return {
     async duplicate(input: {
       readonly sourceQuoteId: string
-      readonly actor: QuoteMutationActor
+      readonly actor: ScopedCommandActor
       readonly idempotencyKey: string
     }): Promise<QuoteDuplicationResult> {
       const idempotencyKey = input.idempotencyKey.trim()
@@ -242,11 +242,13 @@ export function createQuoteDuplicationService(options: {
       return options.store.transaction(async (transaction) => {
         const source = await transaction.getQuoteForUpdate(input.sourceQuoteId)
         if (!source) throw new QuoteDuplicationError('QUOTE_NOT_FOUND')
+        // Centralized matrix decision (command-authorization.ts): capability
+        // first, then own-assigned record scope.
         if (
-          !isQuoteMutationAuthorized({
+          !isQuoteCommandAuthorized({
             actor: input.actor,
             ownerUserId: source.ownerUserId,
-            permission: 'quotes:duplicate',
+            command: 'duplicateQuote',
           })
         ) {
           throw new QuoteDuplicationError('FORBIDDEN')

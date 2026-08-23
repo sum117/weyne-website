@@ -1,5 +1,7 @@
 import { logUnexpectedError } from '@/lib/server/log-redaction'
 import { createServerFn } from '@tanstack/react-start'
+import { UnauthenticatedError } from '@/lib/auth/authorization.server'
+import { requireCommercialContext } from '@/lib/auth/commercial-scope.server'
 import {
   createOrderReadService,
   type OrderReadServiceContract,
@@ -14,13 +16,11 @@ import type { Result } from '@/lib/domain/result'
 
 /**
  * Authorized order read endpoints: paginated listing with filters and
- * snapshot-faithful detail retrieval. Every operation re-checks the RBAC
- * policy server-side; the UI never decides authorization.
- *
- * Authentication fails closed until the authenticated app session adapter is
- * connected, matching the carrier/industry/quote-PDF functions. The full
- * service composition below is exercised by tests and becomes live the moment
- * `authenticate` resolves a real actor.
+ * snapshot-faithful detail retrieval. Every call re-derives the session from
+ * the request cookie, checks the centralized capability matrix
+ * (`order.view`), and filters records to the actor's scope BEFORE pagination;
+ * the UI never decides authorization. Out-of-scope or unknown identifiers
+ * both resolve as NOT_FOUND so IDs cannot be enumerated.
  */
 
 export type OrderPublicError =
@@ -95,9 +95,10 @@ async function getOrderReadService(): Promise<OrderReadServiceContract> {
   })
 }
 
-/** Fails closed until the authenticated session adapter exists. */
-function authenticate(): CommercialActor | null {
-  return null
+/** Resolves the caller from the request cookie; 401 when no session exists. */
+async function authenticate(): Promise<CommercialActor> {
+  const context = await requireCommercialContext('order', 'order.view')
+  return { id: context.session.id, role: context.session.role, tenantId: context.tenantId }
 }
 
 const orderOperations = createOrderOperations({
@@ -109,19 +110,26 @@ const orderOperations = createOrderOperations({
 
 const acceptUnknownInput = (input: unknown) => input
 
+function unauthenticated(): Result<never, OrderPublicError> {
+  return {
+    ok: false as const,
+    error: {
+      code: 'UNAUTHENTICATED' as const,
+      status: 401 as const,
+      message: 'Autenticação necessária.',
+    },
+  }
+}
+
 export const listOrders = createServerFn({ method: 'GET' })
   .validator(acceptUnknownInput)
   .handler(async ({ data }: { data: unknown }) => {
-    const actor = authenticate()
-    if (!actor) {
-      return {
-        ok: false as const,
-        error: {
-          code: 'UNAUTHENTICATED' as const,
-          status: 401 as const,
-          message: 'Autenticação necessária.',
-        },
-      }
+    let actor: CommercialActor
+    try {
+      actor = await authenticate()
+    } catch (cause) {
+      if (cause instanceof UnauthenticatedError) return unauthenticated()
+      throw cause
     }
     return orderOperations.list(actor, data)
   })
@@ -129,16 +137,12 @@ export const listOrders = createServerFn({ method: 'GET' })
 export const getOrderDetail = createServerFn({ method: 'GET' })
   .validator(acceptUnknownInput)
   .handler(async ({ data }: { data: unknown }) => {
-    const actor = authenticate()
-    if (!actor) {
-      return {
-        ok: false as const,
-        error: {
-          code: 'UNAUTHENTICATED' as const,
-          status: 401 as const,
-          message: 'Autenticação necessária.',
-        },
-      }
+    let actor: CommercialActor
+    try {
+      actor = await authenticate()
+    } catch (cause) {
+      if (cause instanceof UnauthenticatedError) return unauthenticated()
+      throw cause
     }
     return orderOperations.detail(actor, data)
   })

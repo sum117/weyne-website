@@ -1,9 +1,9 @@
 import { createHash, randomUUID } from 'node:crypto'
 import Decimal from 'decimal.js'
 import {
-  isQuoteMutationAuthorized,
-  type QuoteMutationActor,
-} from './authorization.server'
+  isQuoteCommandAuthorized,
+  type ScopedCommandActor,
+} from './command-authorization'
 
 export const QUOTE_STATUSES = [
   'draft',
@@ -44,7 +44,7 @@ export class QuoteLifecycleError extends Error {
   }
 }
 
-export type QuoteLifecycleActor = QuoteMutationActor
+export type QuoteLifecycleActor = ScopedCommandActor
 
 export interface QuoteLifecycleRecord {
   readonly id: string
@@ -253,32 +253,18 @@ function payloadHash(input: {
   return createHash('sha256').update(JSON.stringify(input)).digest('hex')
 }
 
-const COMMAND_PERMISSIONS: Readonly<
-  Record<Exclude<QuoteLifecycleCommand, 'expireQuote'>, readonly [string, string]>
-> = {
-  sendQuote: ['quotes:send:any', 'quotes:send:own'],
-  reopenQuote: ['quotes:update:any', 'quotes:update:own'],
-  approveQuote: ['quotes:decide:any', 'quotes:decide:own'],
-  rejectQuote: ['quotes:decide:any', 'quotes:decide:own'],
-  cancelQuote: ['quotes:cancel:any', 'quotes:cancel:own'],
-}
-
 function isAuthorized(
   actor: QuoteLifecycleActor,
   quote: QuoteLifecycleRecord,
   command: QuoteLifecycleCommand,
 ): boolean {
-  if (actor.role === 'read_only') return false
-  if (command === 'expireQuote') {
-    return actor.role === 'system' && actor.permissions.includes('system:expire_quotes')
-  }
-  if (actor.role === 'system') return false
-
-  const [anyPermission] = COMMAND_PERMISSIONS[command]
-  return isQuoteMutationAuthorized({
+  // Centralized matrix decision (command-authorization.ts): capability first,
+  // then own-assigned record scope. Replaces the legacy permission-string
+  // scheme; `expireQuote` resolves through the dedicated system grant.
+  return isQuoteCommandAuthorized({
     actor,
     ownerUserId: quote.ownerUserId,
-    permission: anyPermission.slice(0, -4),
+    command,
   })
 }
 
@@ -371,6 +357,21 @@ function isPercentage(value: unknown): value is string {
 
 function money(value: Decimal.Value): Decimal {
   return new Decimal(value).toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+}
+
+/**
+ * Pure commercial-completeness gate for `sendQuote`. Exported so deployment
+ * boundaries (autosave, workflow harnesses) evaluate readiness with the SAME
+ * rules the lifecycle service enforces — never a drifted copy.
+ */
+export function isQuoteReadyToSend(
+  quote: Pick<QuoteLifecycleRecord, 'customerSnapshot' | 'commercialSnapshot'>,
+): boolean {
+  return hasCompleteCommercialSnapshots({
+    ...(quote as QuoteLifecycleRecord),
+    status: 'draft',
+    validUntil: '9999-12-31',
+  })
 }
 
 function hasCompleteCommercialSnapshots(quote: QuoteLifecycleRecord): boolean {

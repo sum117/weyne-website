@@ -293,7 +293,7 @@ export function createPostgresQuoteRepository(options: {
           UPDATE quotes
           SET commercial_snapshot = ${JSON.stringify(input.commercialSnapshot)}::text::jsonb,
               version = version + 1,
-              updated_at = clock_timestamp()
+              updated_at = date_trunc('milliseconds', clock_timestamp())
           WHERE id = ${input.quoteId} AND version = ${input.expectedVersion}
           RETURNING
             id,
@@ -355,7 +355,7 @@ export function createPostgresQuoteRepository(options: {
 
         const rows = await tx<QuoteRow[]>`
           UPDATE quotes
-          SET status = ${input.toStatus}, version = version + 1, updated_at = clock_timestamp()
+          SET status = ${input.toStatus}, version = version + 1, updated_at = date_trunc('milliseconds', clock_timestamp())
           WHERE id = ${input.quoteId} AND version = ${input.expectedVersion}
           RETURNING
             id,

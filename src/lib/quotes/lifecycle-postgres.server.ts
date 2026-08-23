@@ -135,7 +135,7 @@ export function createPostgresQuoteLifecycleStore(options: {
   return {
     async businessDate() {
       const rows = await sql<{ value: string }[]>`
-        SELECT (clock_timestamp() AT TIME ZONE 'America/Fortaleza')::date::text AS value
+        SELECT (date_trunc('milliseconds', clock_timestamp()) AT TIME ZONE 'America/Fortaleza')::date::text AS value
       `
       return rows[0]!.value
     },
@@ -158,13 +158,13 @@ export function createPostgresQuoteLifecycleStore(options: {
         const transaction: QuoteLifecycleTransaction = {
           async now() {
             const rows = await tx<{ value: Date }[]>`
-              SELECT clock_timestamp() AS value
+              SELECT date_trunc('milliseconds', clock_timestamp()) AS value
             `
             return rows[0]!.value
           },
           async businessDate() {
             const rows = await tx<{ value: string }[]>`
-              SELECT (clock_timestamp() AT TIME ZONE 'America/Fortaleza')::date::text AS value
+              SELECT (date_trunc('milliseconds', clock_timestamp()) AT TIME ZONE 'America/Fortaleza')::date::text AS value
             `
             return rows[0]!.value
           },
@@ -215,7 +215,7 @@ export function createPostgresQuoteLifecycleStore(options: {
                 cancelled_by = $12,
                 cancelled_reason = $13,
                 version = version + 1,
-                updated_at = clock_timestamp()
+                updated_at = date_trunc('milliseconds', clock_timestamp())
               WHERE id = $14 AND version = $15
               RETURNING ${quoteColumns}`,
               [
