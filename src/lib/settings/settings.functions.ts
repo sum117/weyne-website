@@ -1,6 +1,7 @@
 import { logStructuredEvent, logUnexpectedError } from '@/lib/server/log-redaction'
 import { createServerFn } from '@tanstack/react-start'
 import { getDatabase } from '@/lib/db/database.server'
+import { getAppSession } from '@/lib/auth/session.server'
 import type { Result } from '@/lib/domain/result'
 import {
   createPostgresSettingsRepository,
@@ -16,10 +17,11 @@ import type { SettingsRecord } from '@/domain/settings/business-settings'
 /**
  * Authorized admin endpoints for the canonical business/document settings.
  *
- * Every call re-derives the actor server-side; authorization is never decided
- * by the client. Authentication fails closed until the authenticated app
- * session adapter is connected, matching the established posture of the
- * report-export, order, and industry functions.
+ * Every call re-derives the actor server-side from the Better Auth request
+ * cookie (`getAppSession`); authorization is never decided by the client.
+ * Authorization decisions consult the centralized RBAC matrix through the
+ * settings service, so a non-admin is denied and audited before any payload
+ * validation or persistence happens.
  *
  * Settings are sourced from PostgreSQL only. Nothing in this module reads or
  * emits `VITE_*`/public configuration, and issued-document numbering counters
@@ -128,7 +130,6 @@ async function getSettingsService(): Promise<SettingsServiceContract> {
   const database = await getDatabase()
   return createSettingsService({
     repository: createPostgresSettingsRepository(database),
-    authenticateRole: async () => null,
     audit: {
       async append(event) {
         // Actor id, action, outcome, changed fields, version, timestamp.
@@ -158,9 +159,16 @@ const settingsOperations = createSettingsOperations({
   },
 })
 
-/** Fails closed until the authenticated session adapter exists. */
+/**
+ * Resolves the caller from the request cookie through the Better Auth session
+ * adapter. Authorization itself stays in the settings service, which consults
+ * the centralized RBAC matrix (`settings.read`/`settings.update` are
+ * admin-only) so a denial is audited with the actor who attempted it.
+ */
 async function authenticate(): Promise<SettingsActor | null> {
-  return null
+  const session = await getAppSession()
+  if (!session) return null
+  return { id: session.user.id, role: session.user.role }
 }
 
 const acceptUnknownInput = (input: unknown) => input

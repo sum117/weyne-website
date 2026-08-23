@@ -2,6 +2,7 @@ import { logUnexpectedError } from '@/lib/server/log-redaction'
 import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import { getDatabase } from '@/lib/db/database.server'
+import { getAppSession } from '@/lib/auth/session.server'
 import {
   createS3DocumentLogoStorage,
 } from '@/lib/storage/document-logo-storage.server'
@@ -21,9 +22,10 @@ import {
 /**
  * Authorized admin endpoints for the private document logo pipeline.
  *
- * Every call re-derives the actor server-side and fails closed until the
- * authenticated app session adapter is connected, matching the established
- * posture of the settings, report-export, and quote-PDF functions. Previews
+ * Every call re-derives the actor server-side from the Better Auth request
+ * cookie (`getAppSession`) and fails closed when no session resolves; the
+ * logo service denies non-admins with `FORBIDDEN`, matching the centralized
+ * RBAC matrix. Previews
  * return short-lived signed URLs that must never be persisted; no endpoint
  * ever produces a permanent public object URL.
  */
@@ -128,9 +130,16 @@ async function getLogoService(): Promise<DocumentLogoServiceContract> {
   })
 }
 
-/** Fails closed until the authenticated session adapter exists. */
+/**
+ * Resolves the caller from the request cookie through the Better Auth session
+ * adapter. Authorization stays in the logo service (`requireAdmin` denies
+ * non-admins with FORBIDDEN before any storage or persistence happens), so a
+ * denial can be attributed to an authenticated actor.
+ */
 async function authenticate(): Promise<DocumentLogoActor | null> {
-  return null
+  const session = await getAppSession()
+  if (!session) return null
+  return { id: session.user.id, role: session.user.role }
 }
 
 const acceptUnknownInput = (input: unknown) => input

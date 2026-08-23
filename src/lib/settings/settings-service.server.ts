@@ -4,6 +4,7 @@ import {
   type BusinessSettings,
   type SettingsRecord,
 } from '@/domain/settings/business-settings'
+import { authorize } from '@/lib/auth/capabilities'
 import { failure, success, type Result } from '@/lib/domain/result'
 import { parseRequest } from '@/lib/server/request.schema'
 import type {
@@ -67,7 +68,6 @@ export type SettingsServiceContract = Readonly<{
 
 export type SettingsServiceDependencies = Readonly<{
   repository: SettingsRepository
-  authenticateRole: () => Promise<SettingsActor | null> | SettingsActor | null
   audit: SettingsAuditSink
   logUnexpectedError: (cause: unknown) => void
   createCorrelationId: () => string
@@ -99,10 +99,12 @@ export function createSettingsService(
     }
   }
 
-  function authorize(
+  function authorizeActor(
     actor: SettingsActor | null,
   ): actor is SettingsActor & { role: 'admin' } {
-    return actor !== null && actor.role === 'admin'
+    return (
+      actor !== null && authorize(actor.role, 'settings.read') === 'allow'
+    )
   }
 
   return Object.freeze({
@@ -116,7 +118,7 @@ export function createSettingsService(
         })
         return failure({ category: 'unauthenticated' as const })
       }
-      if (!authorize(actor)) {
+      if (!authorizeActor(actor)) {
         await record({
           action: 'settings.denied',
           actorId: actor.id,
@@ -151,7 +153,7 @@ export function createSettingsService(
         })
         return failure({ category: 'unauthenticated' as const })
       }
-      if (!authorize(actor)) {
+      if (!authorizeActor(actor)) {
         await record({
           action: 'settings.denied',
           actorId: actor.id,
