@@ -44,6 +44,54 @@ curl --fail --show-error http://127.0.0.1:3000/app
 proves that configuration validation passed and the HTTP process is listening;
 it does not prove database, storage, or other dependency readiness.
 
+### Readiness versus liveness
+
+Dependency readiness is a separate endpoint: `GET /readyz`. It probes every
+required dependency — one `SELECT 1` against the pooled database, plus a
+bounded HeadBucket against object storage when S3 credentials are configured —
+and answers 200 with per-dependency status when all required checks pass, or
+503 with the failing check named when they do not. Probe failures never echo
+raw causes (driver errors can embed `DATABASE_URL`). `/readyz` never mutates
+anything and is safe to poll at any interval.
+
+| Endpoint | Answers | Fails when |
+|---|---|---|
+| `/healthz` | Is this process serving? | Process not listening or misconfigured. |
+| `/readyz` | Can this process do its work? | Database or object storage unreachable. |
+
+Every response carries an `x-request-id` correlation ID: an upstream value
+(Caddy mints one via `{http.request.uuid}`) is validated and echoed; anything
+absent or malformed is replaced with a fresh UUID. The same ID is attached to
+every structured log line emitted while the request — including background
+work it schedules — is in flight, so a single ID traces a request from edge
+log through application and error logs.
+
+### Staging-like full stack
+
+`deploy/docker-compose.staging.yml` boots the complete production topology on
+one host: PostgreSQL and MinIO (R2 stand-in) join app, Caddy, and cloudflared.
+The backend network is `internal: true`, nothing publishes a host port, all
+credentials arrive only through `.env.staging` (`deploy/.env.staging.example`
+is the placeholder template), and the app healthcheck polls `/readyz`, so a
+database or storage outage marks the container unhealthy without restarting
+it. Dependency ordering in Compose is startup convenience only; `/readyz` is
+the source of truth. Rehearse with fake values:
+
+```sh
+cd deploy && cp .env.staging.example .env.staging && $EDITOR .env.staging
+docker compose --env-file .env.staging -f docker-compose.staging.yml up -d --wait
+```
+
+The `backend` and `edge` networks use fixed names (`weyne_staging_backend`,
+`weyne_staging_edge`). Two Compose projects that both use this file therefore
+share those networks, and service names such as `postgres` and `storage`
+resolve to more than one container. Run only ONE staging project per host, and
+tear the previous one down with `down -v` before starting another. A second
+concurrent project produces confusing failures — backups reporting
+`snapshot "..." does not exist`, or `storage-init` reporting a bucket it just
+created as missing — because the client reached a different container than the
+one it set up.
+
 ## Rehearse the container and Caddy topology locally
 
 The local Compose file uses the same application image and Caddyfile as
@@ -89,6 +137,32 @@ These values are server-only. Startup parses them before binding the HTTP port.
 | `PORT` | no | Decimal integer from 1 through 65535; defaults to `3000`. |
 | `MIGRATION_CLEANUP_RELEASE` | no | Migration-only opt-in. Empty/absent for normal releases; for a contract migration it must exactly equal that migration ID. See [migrations and rollback](migrations-and-rollback.md). |
 | `NODE_ENV` | no application parser | The image fixes it to `production`; it is process configuration, not a secret. |
+
+### Database pool and resource bounds
+
+The application process owns one bounded postgres.js pool. Defaults are
+conservative for the dedicated VPS deployment (single app container,
+PostgreSQL beside it with the default 100-slot `max_connections`). Every
+value is environment-overridable without a rebuild; invalid values fail
+startup with the same redacted configuration error as `DATABASE_URL`.
+
+| Variable | Validation and default | Meaning |
+|---|---|---|
+| `WEYNE_DB_POOL_MAX` | Integer 1-100; defaults to `10`. | Maximum concurrent pool connections. Keep well below the server-side `max_connections` headroom. |
+| `WEYNE_DB_IDLE_TIMEOUT_SECONDS` | Integer 1-3600; defaults to `30`. | Seconds an idle pooled connection is kept before closing. |
+| `WEYNE_DB_CONNECT_TIMEOUT_SECONDS` | Integer 1-120; defaults to `10`. | Seconds to wait while establishing a connection. |
+| `WEYNE_DB_STATEMENT_TIMEOUT_MS` | Integer 1-600000; defaults to `30000`. | Server-side `statement_timeout` per session: a runaway query is cancelled by PostgreSQL, not by client code. |
+| `WEYNE_DB_IDLE_IN_TRANSACTION_TIMEOUT_MS` | Integer 1-600000; defaults to `15000`. | Server-side `idle_in_transaction_session_timeout`: a forgotten open transaction releases its connection. |
+
+Connections are also recycled after 30 minutes (`max_lifetime`) so long
+processes pick up server-side changes and never accumulate ancient
+sessions.
+
+### Request body limit
+
+| Variable | Validation and default | Meaning |
+|---|---|---|
+| `WEYNE_MAX_BODY_BYTES` | Integer 1024-1073741824; defaults to `50331648` (48 MiB). | Hard byte cap for any single request body, enforced before buffering: declared `content-length` above the cap is answered 413, and streamed bodies are destroyed once they exceed it. The largest legal payload today is a 25 MiB order attachment (~34.2 MB as base64). |
 
 The server-only object-storage adapter additionally supports the following
 variables when an application path instantiates S3 storage. They are not needed

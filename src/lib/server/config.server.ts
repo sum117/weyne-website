@@ -23,12 +23,20 @@ const serverEnvironmentSchema = z.object({
       'PORT must be an integer between 1 and 65535',
     )
     .default(String(DEFAULT_PORT)),
+  // Hard byte cap for any single request body; see production-server.ts.
+  WEYNE_MAX_BODY_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1024)
+    .max(1024 * 1024 * 1024)
+    .default(48 * 1024 * 1024),
 })
 
 export type ServerConfig = Readonly<{
   databaseUrl: string
   host: string
   port: number
+  maxBodyBytes: number
 }>
 
 export function parseServerConfig(
@@ -46,6 +54,7 @@ export function parseServerConfig(
     databaseUrl: database.url,
     host: result.data.HOST,
     port: Number(result.data.PORT),
+    maxBodyBytes: result.data.WEYNE_MAX_BODY_BYTES,
   })
 }
 

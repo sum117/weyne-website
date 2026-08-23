@@ -5,7 +5,11 @@
 # (Cloudflare adds its own at the edge).
 :80 {
 	encode zstd gzip
-	reverse_proxy app:3000
+	reverse_proxy app:3000 {
+		# Correlation IDs: mint one per request when the edge did not send
+		# one; the app echoes it back and stamps it on every log line.
+		header_up X-Request-Id "{http.request.uuid}"
+	}
 
 	# Baseline security headers on every response.
 	header {

@@ -1,8 +1,15 @@
 import { createServer } from 'node:http'
+import { randomUUID } from 'node:crypto'
 import { readFile, stat } from 'node:fs/promises'
 import { extname, isAbsolute, join, relative, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseServerConfig } from '../src/lib/server/config.server'
+import {
+  logStructuredEvent,
+  logUnexpectedError,
+  redactSensitiveText,
+} from '../src/lib/server/log-redaction'
+import { runWithLogContext } from '../src/lib/server/log-context.server'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 const CLIENT_ROOT = fileURLToPath(new URL('../client/', import.meta.url))
@@ -108,7 +115,49 @@ function requestOrigin(req: IncomingMessage): string {
   return `${protocol || 'http'}://${req.headers.host || 'localhost'}`
 }
 
-function toWebRequest(req: IncomingMessage): Request {
+/**
+ * Hard byte cap for any single request body. The largest legal payload today
+ * is the order-attachment upload (25 MiB of bytes, ~34.2 MB as base64), so
+ * the default leaves comfortable slack while refusing unbounded bodies
+ * before they are buffered anywhere. Configurable via `WEYNE_MAX_BODY_BYTES`.
+ */
+export const DEFAULT_MAX_BODY_BYTES = 48 * 1024 * 1024
+
+export function requestBodyExceedsLimit(
+  req: IncomingMessage,
+  maxBytes: number,
+): boolean {
+  const declared = req.headers['content-length']
+  if (Array.isArray(declared)) return true
+  if (declared === undefined) return false
+  const length = Number(declared)
+  return Number.isFinite(length) && length > maxBytes
+}
+
+/**
+ * Wraps the raw request stream so bodies that lie about (or omit)
+ * `content-length` cannot exceed the cap. Reading here also keeps the
+ * stream out of flowing mode before the Start server consumes it.
+ */
+function readBoundedBody(req: IncomingMessage, maxBytes: number): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    let received = 0
+    req.on('data', (chunk: Buffer) => {
+      received += chunk.byteLength
+      if (received > maxBytes) {
+        req.destroy()
+        reject(new Error(`request body exceeds ${maxBytes} bytes`))
+        return
+      }
+      chunks.push(chunk)
+    })
+    req.once('end', () => resolve(Buffer.concat(chunks)))
+    req.once('error', reject)
+  })
+}
+
+function toWebRequest(req: IncomingMessage, body?: Buffer): Request {
   const headers = new Headers()
   for (const [name, value] of Object.entries(req.headers)) {
     if (Array.isArray(value)) {
@@ -121,8 +170,10 @@ function toWebRequest(req: IncomingMessage): Request {
   const method = req.method ?? 'GET'
   const init: RequestInit & { duplex?: 'half' } = { headers, method }
   if (method !== 'GET' && method !== 'HEAD') {
-    init.body = req as unknown as BodyInit
-    init.duplex = 'half'
+    // The bounded read has already consumed the raw stream; hand the Start
+    // server a complete body instead of the live socket.
+    init.body = body ? new Uint8Array(body) : new Uint8Array(0)
+    if (body === undefined) headers.set('content-length', '0')
   }
 
   return new Request(new URL(req.url ?? '/', requestOrigin(req)), init)
@@ -211,30 +262,83 @@ export function startProductionServer(
 
   const server = createServer((req, res) => {
     applyProductionSecurityHeaders(res)
-    void (async () => {
-      const pathname = new URL(req.url ?? '/', requestOrigin(req)).pathname
-      if (pathname === '/healthz') {
-        res.statusCode = 200
-        res.setHeader('cache-control', 'no-store')
-        res.setHeader('content-type', 'application/json; charset=utf-8')
-        res.end(JSON.stringify({ status: 'ok' }))
-        return
-      }
-      if (await serveStaticFile(req, res, pathname)) return
+    let pathname = '/'
+    const startedAt = Date.now()
+    // Correlation ID: honor an upstream-provided one (Caddy/edge), mint a
+    // fresh UUID otherwise. Echoed on every response and attached to all
+    // structured log lines emitted while this request (or background work
+    // it schedules) is in flight.
+    const upstreamRequestId = req.headers['x-request-id']
+    const requestId = Array.isArray(upstreamRequestId)
+      ? (upstreamRequestId[0] ?? '')
+      : (upstreamRequestId ?? '')
+    const correlationId =
+      /^[\w.-]{8,128}$/.test(requestId) ? requestId : randomUUID()
 
-      const start = await loadStartServer()
-      await sendWebResponse(await start.fetch(toWebRequest(req)), res, pathname)
-    })().catch((error: unknown) => {
-      console.error('Production request failed', error)
-      if (!res.headersSent) res.statusCode = 500
-      res.end('Internal Server Error')
-    })
+    void runWithLogContext({ requestId: correlationId }, () =>
+      (async () => {
+        res.setHeader('x-request-id', correlationId)
+        pathname = new URL(req.url ?? '/', requestOrigin(req)).pathname
+
+        if (pathname === '/readyz') {
+          const { readDependencies } = await import(
+            '../src/lib/server/readiness.server'
+          )
+          const report = await readDependencies()
+          res.statusCode = report.ready ? 200 : 503
+          res.setHeader('cache-control', 'no-store')
+          res.setHeader('content-type', 'application/json; charset=utf-8')
+          res.end(JSON.stringify(report))
+          return
+        }
+        if (pathname === '/healthz') {
+          res.statusCode = 200
+          res.setHeader('cache-control', 'no-store')
+          res.setHeader('content-type', 'application/json; charset=utf-8')
+          res.end(JSON.stringify({ status: 'ok' }))
+          return
+        }
+        if (requestBodyExceedsLimit(req, config.maxBodyBytes)) {
+          res.statusCode = 413
+          res.setHeader('cache-control', 'no-store')
+          res.end('Payload Too Large')
+          return
+        }
+        const body =
+          req.method !== 'GET' && req.method !== 'HEAD'
+            ? await readBoundedBody(req, config.maxBodyBytes)
+            : undefined
+        if (await serveStaticFile(req, res, pathname)) return
+
+        const start = await loadStartServer()
+        await sendWebResponse(await start.fetch(toWebRequest(req, body)), res, pathname)
+      })().catch((error: unknown) => {
+        // Redacted single-line JSON; raw errors can carry credentials or PII.
+        logUnexpectedError('production.request', error, { pathname })
+        if (!res.headersSent) res.statusCode = 500
+        res.end('Internal Server Error')
+      }).finally(() => {
+        // Access log after completion, still inside the log context so the
+        // line carries the request's correlation ID. Method/path/status
+        // only — never headers, query strings, or payloads.
+        const durationMs = Date.now() - startedAt
+        logStructuredEvent({
+          kind: 'request',
+          method: req.method,
+          path: redactSensitiveText(pathname, 256),
+          status: res.statusCode,
+          durationMs,
+        })
+      }),
+    )
   })
 
   return server.listen(config.port, config.host, () => {
-    console.log(
-      `TanStack Start listening on http://${config.host}:${config.port}`,
-    )
+    logStructuredEvent({
+      kind: 'startup',
+      host: config.host,
+      port: config.port,
+    })
   })
 }
 
