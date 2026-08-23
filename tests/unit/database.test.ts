@@ -10,6 +10,13 @@ describe('parseDatabaseConfig', () => {
       }),
     ).toEqual({
       url: 'postgresql://user:secret@localhost:5432/weyne',
+      pool: {
+        max: 10,
+        idleTimeoutSeconds: 30,
+        connectTimeoutSeconds: 10,
+        statementTimeoutMs: 30_000,
+        idleInTransactionTimeoutMs: 15_000,
+      },
     })
   })
 
@@ -26,14 +33,52 @@ describe('parseDatabaseConfig', () => {
       expect(String(error)).not.toContain('mysql://localhost/weyne')
     }
   })
-})
+
+  it.each([
+    ['WEYNE_DB_POOL_MAX', '100', 'max'],
+    ['WEYNE_DB_IDLE_TIMEOUT_SECONDS', '120', 'idleTimeoutSeconds'],
+    ['WEYNE_DB_CONNECT_TIMEOUT_SECONDS', '30', 'connectTimeoutSeconds'],
+    ['WEYNE_DB_STATEMENT_TIMEOUT_MS', '60000', 'statementTimeoutMs'],
+    [
+      'WEYNE_DB_IDLE_IN_TRANSACTION_TIMEOUT_MS',
+      '45000',
+      'idleInTransactionTimeoutMs',
+    ],
+  ])('overrides %s through the environment', (variable, value, key) => {
+    const config = parseDatabaseConfig({
+      DATABASE_URL: 'postgresql://localhost/weyne',
+      [variable]: value,
+    })
+    expect(config.pool[key as keyof typeof config.pool]).toBe(Number(value))
+  })
+
+  it('rejects out-of-range or non-numeric pool settings', () => {
+    expect(() =>
+      parseDatabaseConfig({
+        DATABASE_URL: 'postgresql://localhost/weyne',
+        WEYNE_DB_POOL_MAX: '0',
+      }),
+    ).toThrow('Invalid server database configuration')
+    expect(() =>
+      parseDatabaseConfig({
+        DATABASE_URL: 'postgresql://localhost/weyne',
+        WEYNE_DB_STATEMENT_TIMEOUT_MS: '-1',
+      }),
+    ).toThrow('Invalid server database configuration')
+    expect(() =>
+      parseDatabaseConfig({
+        DATABASE_URL: 'postgresql://localhost/weyne',
+        WEYNE_DB_POOL_MAX: 'not-a-number',
+      }),
+    ).toThrow('Invalid server database configuration')
+  })})
 
 describe('createConnectionManager', () => {
   it('reuses one in-flight connection for concurrent callers', async () => {
     let connectionCount = 0
     const database = { kind: 'typed-database' }
     const manager = createConnectionManager({
-      loadConfig: () => ({ url: 'postgresql://localhost/weyne' }),
+      loadConfig: () => parseDatabaseConfig({ DATABASE_URL: 'postgresql://localhost/weyne' }),
       connect: async () => {
         connectionCount += 1
         await Promise.resolve()
@@ -55,7 +100,7 @@ describe('createConnectionManager', () => {
     let connectionCount = 0
     let closeCount = 0
     const manager = createConnectionManager({
-      loadConfig: () => ({ url: 'postgresql://localhost/weyne' }),
+      loadConfig: () => parseDatabaseConfig({ DATABASE_URL: 'postgresql://localhost/weyne' }),
       connect: () => {
         connectionCount += 1
         return {
@@ -78,7 +123,7 @@ describe('createConnectionManager', () => {
   it('allows retry after connection creation fails', async () => {
     let attempts = 0
     const manager = createConnectionManager({
-      loadConfig: () => ({ url: 'postgresql://localhost/weyne' }),
+      loadConfig: () => parseDatabaseConfig({ DATABASE_URL: 'postgresql://localhost/weyne' }),
       connect: () => {
         attempts += 1
         if (attempts === 1) {

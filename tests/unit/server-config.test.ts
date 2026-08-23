@@ -11,7 +11,17 @@ describe('parseServerConfig', () => {
       databaseUrl: 'postgresql://weyne:secret@database:5432/weyne',
       host: '0.0.0.0',
       port: 3000,
+      maxBodyBytes: 48 * 1024 * 1024,
     })
+  })
+
+  it('honors the request body cap override', () => {
+    expect(
+      parseServerConfig({
+        DATABASE_URL: `postgresql://database/weyne`,
+        WEYNE_MAX_BODY_BYTES: String(1024 * 1024),
+      }).maxBodyBytes,
+    ).toBe(1024 * 1024)
   })
 
   it.each([

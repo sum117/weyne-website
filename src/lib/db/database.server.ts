@@ -9,8 +9,22 @@ export type Database = PostgresJsDatabase<typeof schema>
 
 const databaseManager = createConnectionManager<Database>({
   loadConfig: () => parseDatabaseConfig(process.env),
-  connect: ({ url }) => {
-    const client = postgres(url)
+  connect: (config) => {
+    // Bounded pool + server-side guards. `max` caps concurrent connections;
+    // `connection` options are PostgreSQL session parameters enforced by the
+    // server, so a runaway query or forgotten transaction can never pin a
+    // connection forever.
+    const client = postgres(config.url, {
+      max: config.pool.max,
+      idle_timeout: config.pool.idleTimeoutSeconds,
+      connect_timeout: config.pool.connectTimeoutSeconds,
+      max_lifetime: 60 * 30,
+      connection: {
+        statement_timeout: config.pool.statementTimeoutMs,
+        idle_in_transaction_session_timeout:
+          config.pool.idleInTransactionTimeoutMs,
+      },
+    })
     const database = drizzle(client, { schema })
 
     return {
