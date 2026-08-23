@@ -67,4 +67,50 @@ describe('public bundle budget', () => {
       expect.stringContaining(`application-only marker ${marker}`),
     )
   })
+
+  it('rejects heavy server-only modules in any client chunk, even unreferenced ones', async () => {
+    const root = await fixture()
+    await writeFile(
+      join(root, 'assets/lazy-route.js'),
+      'const renderer = "@react-pdf/renderer"; const sheet = "exceljs"',
+    )
+
+    const result = await measurePublicBundle(root)
+
+    expect(result.violations).toContainEqual(
+      expect.stringContaining(
+        'client chunk lazy-route.js contains heavy server-only module marker @react-pdf',
+      ),
+    )
+    expect(result.violations).toContainEqual(
+      expect.stringContaining(
+        'client chunk lazy-route.js contains heavy server-only module marker exceljs',
+      ),
+    )
+  })
+
+  it('rejects an authentication secret marker in any client chunk', async () => {
+    const root = await fixture()
+    await writeFile(
+      join(root, 'assets/leaky-route.js'),
+      'const key = process.env.BETTER_AUTH_SECRET',
+    )
+
+    const result = await measurePublicBundle(root)
+
+    expect(result.violations).toContainEqual(
+      expect.stringContaining(
+        'client chunk leaky-route.js contains heavy server-only module marker BETTER_AUTH_SECRET',
+      ),
+    )
+  })
+
+  it('passes the whole-graph scan when every chunk is free of heavy markers', async () => {
+    const root = await fixture()
+    await writeFile(join(root, 'assets/lazy-route.js'), 'export const label = "Relatórios"')
+
+    const result = await measurePublicBundle(root)
+
+    expect(result.violations).toEqual([])
+  })
 })

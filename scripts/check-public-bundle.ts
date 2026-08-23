@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, readdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { gzipSync } from 'node:zlib'
@@ -29,6 +29,30 @@ const FORBIDDEN_PUBLIC_MARKERS = [
   'recharts',
   'Carregando produtos',
   'A estrutura está pronta para receber os módulos autenticados',
+] as const
+
+/**
+ * Heavy server-only libraries whose client appearance always signals a broken
+ * module boundary. Every PDF, spreadsheet, and storage path in this repository
+ * lives behind `.server` modules or handler-scoped dynamic imports, so these
+ * markers must be absent from EVERY emitted client chunk — not just the
+ * prerendered public route. A hit means heavy optional code leaked into the
+ * browser graph and the offending import must move behind a server boundary.
+ *
+ * The two authentication markers are the strings unique to
+ * `src/lib/auth/config.server.ts`, the only module that reads the Better Auth
+ * signing key. Better Auth also ships a browser client, so the marker targets
+ * the secret-bearing module rather than the package name.
+ */
+const HEAVY_CLIENT_MODULE_MARKERS = [
+  '@react-pdf',
+  'pdfkit',
+  'fontkit',
+  'exceljs',
+  'recharts',
+  '@aws-sdk/client-s3',
+  'BETTER_AUTH_SECRET',
+  'weyne-local-development-key-not-for-production-use',
 ] as const
 
 type AssetMeasurement = {
@@ -128,6 +152,23 @@ export async function measurePublicBundle(
     for (const marker of FORBIDDEN_PUBLIC_MARKERS) {
       if (source.includes(marker)) {
         violations.push(`${asset.path} contains application-only marker ${marker}`)
+      }
+    }
+  }
+
+  // Whole-graph boundary scan: heavy optional modules must never reach ANY
+  // client chunk, including lazy application routes. This complements the
+  // public-route scan above, which only sees assets referenced by index.html.
+  const allClientScripts = await readdir(resolve(clientRoot, 'assets'))
+    .then((entries) => entries.filter((entry) => entry.endsWith('.js')))
+    .catch(() => [] as string[])
+  for (const entry of allClientScripts) {
+    const source = await readFile(resolve(clientRoot, 'assets', entry), 'utf8')
+    for (const marker of HEAVY_CLIENT_MODULE_MARKERS) {
+      if (source.includes(marker)) {
+        violations.push(
+          `client chunk ${entry} contains heavy server-only module marker ${marker}`,
+        )
       }
     }
   }
