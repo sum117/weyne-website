@@ -1,5 +1,6 @@
 import { createServerFn } from '@tanstack/react-start'
 import type { Sql } from 'postgres'
+import { getAppSession } from '@/lib/auth/session.server'
 import {
   createAuditActivityQuery,
   type AuditActivityError,
@@ -57,9 +58,21 @@ export type AuditActivityPublicResult =
   | Readonly<{ ok: true; data: AuditActivityPage }>
   | Readonly<{ ok: false; error: AuditActivityError }>
 
-/** Fails closed until the authenticated app session adapter is connected. */
+/**
+ * Resolves the requester from the Better Auth request cookie. The query
+ * boundary itself enforces the admin-only role (401/403 before any filter or
+ * repository access), so a forged payload can never supply an identity.
+ */
 function authenticate(): Promise<AuditRequester | null> {
-  return Promise.resolve(null)
+  return getAppSession().then((session) =>
+    session
+      ? {
+          id: session.user.id,
+          role: session.user.role,
+          displayName: session.user.name,
+        }
+      : null,
+  )
 }
 
 function sqlClient(): Promise<Sql> {
