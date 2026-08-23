@@ -20,6 +20,7 @@ import {
 import {
   formatPtBrCurrency,
   formatPtBrDecimal,
+  keepOnOneLine,
 } from './format'
 import { renderQuotePdfToBuffer } from './render.server'
 import type {
@@ -219,8 +220,10 @@ function TermsStrip({ snapshot }: Readonly<{ snapshot: QuotePdfSnapshot }>) {
   const representativeContact = [
     snapshot.representative.name,
     snapshot.representative.role,
-    snapshot.representative.email,
-    snapshot.representative.phone,
+    // Contact tokens stay unbreakable; '·' separators remain wrap points.
+    ...[snapshot.representative.email, snapshot.representative.phone]
+      .filter((part): part is string => Boolean(part))
+      .map((part) => keepOnOneLine(part)),
   ]
     .filter(Boolean)
     .join(' · ')
@@ -273,13 +276,24 @@ function CompactProductRow({ item }: Readonly<{ item: QuotePdfItemSnapshot }>) {
           {formatPtBrCurrency(item.unitPriceAmount)}
         </Text>
         <Text style={resumidaStyles.itemValue}>
-          Bruto {formatPtBrCurrency(item.grossAmount)} · desconto do item{' '}
-          {formatPtBrDecimal(item.lineDiscountRate, { maximumFractionDigits: 6 })}% (
-          {formatPtBrCurrency(item.lineDiscountAmount)})
+          {
+            // One pre-composed string child. Multi-expression JSX children get
+            // split into separate runs, and @react-pdf/renderer's line breaker
+            // treats run boundaries as break opportunities — orphaning the
+            // '(' from its amount. A single string with NBSP-bound tokens
+            // keeps '5% (R$ 75,30)' intact.
+            `Bruto ${formatPtBrCurrency(item.grossAmount)} · desconto do item ${formatPtBrDecimal(
+              item.lineDiscountRate,
+              { maximumFractionDigits: 6 },
+            )}% (${keepOnOneLine(formatPtBrCurrency(item.lineDiscountAmount))})`
+          }
         </Text>
         <Text style={resumidaStyles.itemValue}>
-          Rateio desconto geral {formatPtBrCurrency(item.overallDiscountAllocationAmount)} · líquido{' '}
-          {formatPtBrCurrency(item.netMerchandiseAmount)}
+          {
+            `Rateio desconto geral ${formatPtBrCurrency(item.overallDiscountAllocationAmount)} · ${keepOnOneLine(
+              `líquido ${formatPtBrCurrency(item.netMerchandiseAmount)}`,
+            )}`
+          }
         </Text>
         <ItemTaxDetails item={item} />
       </View>
@@ -391,17 +405,29 @@ export function ResumidaQuotePdfDocument({
             <TermsStrip snapshot={snapshot} />
           </PdfSection>
 
-          <PdfSection title="Itens do orçamento" minPresenceAhead={118}>
-            <View style={resumidaStyles.itemsCard}>
-              <View style={resumidaStyles.itemHeader} wrap={false}>
-                <Text style={resumidaStyles.itemImageColumn}>Imagem</Text>
-                <Text style={resumidaStyles.itemDescriptionColumn}>Produto</Text>
-                <Text style={resumidaStyles.itemValueColumn}>Valores fornecidos</Text>
+          {/* The section title, column header, and first item row are one
+              unbreakable block: a page break can never leave a bare heading
+              or an orphaned table header above an empty body. The title stays
+              outside the items card so the card's clipping never affects it. */}
+          <PdfSection minPresenceAhead={170}>
+            <View wrap={false}>
+              <Text style={pdfStyles.sectionTitle}>Itens do orçamento</Text>
+              <View style={resumidaStyles.itemsCard}>
+                <View style={resumidaStyles.itemHeader}>
+                  <Text style={resumidaStyles.itemImageColumn}>Imagem</Text>
+                  <Text style={resumidaStyles.itemDescriptionColumn}>Produto</Text>
+                  <Text style={resumidaStyles.itemValueColumn}>Valores fornecidos</Text>
+                </View>
+                {snapshot.items.length > 0 ? (
+                  <CompactProductRow item={snapshot.items[0]!} />
+                ) : null}
               </View>
-              {snapshot.items.map((item) => (
-                <CompactProductRow key={item.lineId} item={item} />
-              ))}
             </View>
+            {snapshot.items.slice(1).map((item) => (
+              <View key={item.lineId} style={resumidaStyles.itemsCard} wrap={false}>
+                <CompactProductRow item={item} />
+              </View>
+            ))}
           </PdfSection>
 
           <PdfSection title="Fechamento" minPresenceAhead={190}>

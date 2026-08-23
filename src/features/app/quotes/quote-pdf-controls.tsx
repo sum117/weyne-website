@@ -94,7 +94,7 @@ export function QuotePdfControls({
   const activeIdentity = useRef(identity)
 
   const refresh = useCallback(async () => {
-    const result = (await pollQuotePdfStatus({ data: { actor: {}, identity } })) as unknown as PollingPayload
+    const result = (await pollQuotePdfStatus({ data: { identity } })) as unknown as PollingPayload
     if (!result.ok) {
       if (result.error.code === 'FORBIDDEN' || result.error.code === 'NOT_FOUND') {
         setUnauthorized(true)
@@ -137,7 +137,7 @@ export function QuotePdfControls({
     setActionPending(true)
     try {
       const result = (await requestQuotePdfGeneration({
-        data: { actor: {}, identity },
+        data: { identity },
       })) as unknown as PollingPayload
       if (!result.ok) {
         if (result.error.code === 'FORBIDDEN' || result.error.code === 'NOT_FOUND') {
@@ -159,7 +159,7 @@ export function QuotePdfControls({
     try {
       const fetcher = disposition === 'inline' ? previewQuotePdf : downloadQuotePdf
       const result = (await fetcher({
-        data: { actor: {}, identity },
+        data: { identity },
       })) as unknown as
         | Readonly<{ ok: true; file: { bytes: string; filename: string; contentType: string } }>
         | Readonly<{ ok: false; error: QuotePdfPublicError }>

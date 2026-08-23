@@ -3,6 +3,11 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 import type { Sql } from 'postgres'
 import {
+  DENIAL_MESSAGES,
+  ForbiddenError,
+} from '@/lib/auth/authorization.server'
+import { requireCommercialContext } from '@/lib/auth/commercial-scope.server'
+import {
   createQuotePdfDeliveryService,
   QuotePdfDeliveryError,
   type QuotePdfDeliveryActor,
@@ -23,20 +28,13 @@ import { getDatabase } from '@/lib/db/database.server'
 
 /**
  * Authorized quote PDF endpoints: generation requests, status polling, inline
- * preview, and attachment download. Every operation re-checks the permission
- * matrix server-side; the UI never decides authorization.
- *
- * Authentication fails closed until the authenticated app session adapter is
- * connected, matching the established pattern in the carrier/industry
- * functions. The full service composition below is exercised by tests and
- * becomes live the moment `authenticate` resolves a real actor.
+ * preview, and attachment download. The caller's identity NEVER arrives in
+ * the payload: every operation re-derives the session from the request
+ * cookie, checks the centralized capability matrix (`quote.generate_pdf` /
+ * `quote.view`), and re-checks record scope through the delivery service.
+ * Out-of-scope quotes resolve as NOT_FOUND so identifiers cannot be
+ * enumerated; read_only actors may poll status but never retrieve bytes.
  */
-
-const actorSchema = z.object({
-  id: z.string().min(1),
-  role: z.enum(['admin', 'representative', 'read_only']),
-  tenantId: z.string().min(1),
-})
 
 const identitySchema = z.object({
   quoteId: z.string().uuid(),
@@ -46,8 +44,8 @@ const identitySchema = z.object({
   templateVersion: z.number().int().positive(),
 })
 
-export const quotePdfRequestSchema = z.object({ actor: actorSchema, identity: identitySchema })
-export const quotePdfGenerateSchema = z.object({ actor: actorSchema, identity: identitySchema })
+export const quotePdfRequestSchema = z.object({ identity: identitySchema })
+export const quotePdfGenerateSchema = z.object({ identity: identitySchema })
 
 export type QuotePdfPublicError = Readonly<{
   code: string
@@ -105,9 +103,18 @@ function resolveSchemaName(): string {
   return configured
 }
 
-/** Fails closed until the authenticated session adapter exists. */
-function authenticate(): QuotePdfDeliveryActor | null {
-  return null
+/**
+ * Resolves the caller from the request cookie and checks `quote.generate_pdf`
+ * (mutation) or `quote.view` (status/read paths). 401 when no session exists;
+ * 403 with the fixed pt-BR message when authenticated but denied.
+ */
+async function authenticate(capability: 'quote.generate_pdf' | 'quote.view'): Promise<QuotePdfDeliveryActor> {
+  const context = await requireCommercialContext('quote', capability)
+  return {
+    id: context.session.id,
+    role: context.session.role,
+    tenantId: context.tenantId,
+  }
 }
 
 async function getDeliveryService() {
@@ -193,11 +200,28 @@ function createInlineRenderer(): QuotePdfRenderer {
 
 const acceptUnknownInput = (input: unknown) => input
 
+/** Maps boundary auth errors onto the endpoint's public error shape. */
+function toAuthPublicError(cause: unknown): QuotePdfPublicError {
+  if (cause instanceof ForbiddenError) {
+    return { code: 'FORBIDDEN', status: 403, message: DENIAL_MESSAGES.FORBIDDEN }
+  }
+  if (cause instanceof QuotePdfDeliveryError) return toPublicError(cause)
+  logUnexpectedError('quote-pdf.endpoint', cause)
+  return { code: 'INTERNAL_ERROR', status: 500, message: 'Não foi possível concluir a operação.' }
+}
+
 export const requestQuotePdfGeneration = createServerFn({ method: 'POST' })
   .validator(acceptUnknownInput)
   .handler(async ({ data }: { data: unknown }) => {
-    const actor = authenticate()
-    if (!actor) return { ok: false as const, error: toPublicError(new QuotePdfDeliveryError('UNAUTHENTICATED')) }
+    let actor: QuotePdfDeliveryActor
+    try {
+      actor = await authenticate('quote.generate_pdf')
+    } catch (cause) {
+      if (cause instanceof ForbiddenError) {
+        return { ok: false as const, error: toAuthPublicError(cause) }
+      }
+      throw cause
+    }
     const parsed = quotePdfGenerateSchema.safeParse(data)
     if (!parsed.success) return { ok: false as const, error: toPublicError(new QuotePdfDeliveryError('INVALID_REQUEST')) }
     try {
@@ -227,8 +251,15 @@ export const requestQuotePdfGeneration = createServerFn({ method: 'POST' })
 export const pollQuotePdfStatus = createServerFn({ method: 'GET' })
   .validator(acceptUnknownInput)
   .handler(async ({ data }: { data: unknown }) => {
-    const actor = authenticate()
-    if (!actor) return { ok: false as const, error: toPublicError(new QuotePdfDeliveryError('UNAUTHENTICATED')) }
+    let actor: QuotePdfDeliveryActor
+    try {
+      actor = await authenticate('quote.view')
+    } catch (cause) {
+      if (cause instanceof ForbiddenError) {
+        return { ok: false as const, error: toAuthPublicError(cause) }
+      }
+      throw cause
+    }
     const parsed = quotePdfRequestSchema.safeParse(data)
     if (!parsed.success) return { ok: false as const, error: toPublicError(new QuotePdfDeliveryError('INVALID_REQUEST')) }
     try {
@@ -244,14 +275,18 @@ export const pollQuotePdfStatus = createServerFn({ method: 'GET' })
  * Preview and download share the delivery service: the only difference is the
  * Content-Disposition. Both stream bytes through the authenticated server
  * process from private storage — no permanent public URL is ever produced.
+ * Download/preview of document BYTES requires `quote.generate_pdf` per the
+ * matrix: read_only actors may poll status but never retrieve documents.
  */
 async function deliverQuotePdf(data: unknown, disposition: 'inline' | 'attachment') {
-  const actor = authenticate()
-  if (!actor) {
-    return {
-      ok: false as const,
-      error: toPublicError(new QuotePdfDeliveryError('UNAUTHENTICATED')),
+  let actor: QuotePdfDeliveryActor
+  try {
+    actor = await authenticate('quote.generate_pdf')
+  } catch (cause) {
+    if (cause instanceof ForbiddenError) {
+      return { ok: false as const, error: toAuthPublicError(cause) }
     }
+    throw cause
   }
   const parsed = quotePdfRequestSchema.safeParse(data)
   if (!parsed.success) {

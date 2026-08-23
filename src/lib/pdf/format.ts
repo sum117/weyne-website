@@ -45,10 +45,21 @@ export function formatPtBrDecimal(
 }
 
 export function formatPtBrCurrency(value: QuotePdfDecimal): string {
-  return `R$ ${formatPtBrDecimal(value, {
+  // The space after the thousands-safe prefix is a non-breaking space so the
+  // symbol can never be orphaned from its amount by a line wrap in flowing
+  // PDF text (pdf.js normalizes NBSP back to a plain space on extraction).
+  return `R$\u00A0${formatPtBrDecimal(value, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 6,
   })}`
+}
+
+/**
+ * Replaces plain spaces with non-breaking ones so a short structured token
+ * (phone number, code) never splits across lines inside flowing PDF text.
+ */
+export function keepOnOneLine(value: string): string {
+  return value.replace(/ /g, '\u00A0')
 }
 
 export function formatPtBrDate(value: QuotePdfDate): string {

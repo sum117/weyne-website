@@ -113,9 +113,9 @@ describe('shared quote PDF foundation', () => {
       '1.234.567,5',
     )
     expect(formatPtBrDecimal('2.000000', { maximumFractionDigits: 6 })).toBe('2')
-    expect(formatPtBrCurrency('1234567.50')).toBe('R$ 1.234.567,50')
-    expect(formatPtBrCurrency('10.005000')).toBe('R$ 10,005')
-    expect(formatPtBrCurrency('0.00')).toBe('R$ 0,00')
+    expect(formatPtBrCurrency('1234567.50')).toBe('R$\u00A01.234.567,50')
+    expect(formatPtBrCurrency('10.005000')).toBe('R$\u00A010,005')
+    expect(formatPtBrCurrency('0.00')).toBe('R$\u00A00,00')
     expect(() => formatPtBrCurrency('10.0050001')).toThrow('fraction digits')
   })
 

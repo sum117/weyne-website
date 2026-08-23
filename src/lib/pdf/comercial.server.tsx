@@ -21,6 +21,7 @@ import {
   formatPtBrCurrency,
   formatPtBrDate,
   formatPtBrDecimal,
+  keepOnOneLine,
 } from './format'
 import { renderQuotePdfToBuffer } from './render.server'
 import type {
@@ -192,10 +193,6 @@ const comercialStyles = StyleSheet.create({
     lineHeight: 1.35,
     textAlign: 'right',
   },
-  itemValueStrong: {
-    color: pdfPalette.navy,
-    fontWeight: 500,
-  },
   summaryGrid: {
     flexDirection: 'row',
     gap: 12,
@@ -292,7 +289,14 @@ function RepresentativeStrip({ snapshot }: Readonly<{ snapshot: QuotePdfSnapshot
           {snapshot.representative.name}
         </Text>
         <Text style={comercialStyles.representativeRole}>
-          {[snapshot.representative.role, contacts].filter(Boolean).join(' · ')}
+          {[
+            snapshot.representative.role,
+            // Keep each contact token (email, phone) unbreakable; the '·'
+            // separators remain legal wrap points.
+            ...contacts.split(' · ').map((part) => keepOnOneLine(part)),
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         </Text>
       </View>
       <View>
@@ -312,11 +316,19 @@ function TermsLine({ snapshot }: Readonly<{ snapshot: QuotePdfSnapshot }>) {
     `Frete: ${snapshot.terms.freightTerms}`,
     snapshot.terms.carrierName ? `Transportadora: ${snapshot.terms.carrierName}` : null,
     snapshot.terms.deliveryEstimate ? `Entrega: ${snapshot.terms.deliveryEstimate}` : null,
-  ].filter(Boolean)
+  ]
+    .filter((part): part is string => Boolean(part))
+    // Each term becomes one unbreakable unit: nested runs otherwise wrap
+    // mid-word under @react-pdf/renderer (e.g. "co/nfirmação"). Breaks then
+    // only happen at the '·' separators between units.
+    .map((part) => keepOnOneLine(part))
 
   return (
     <Text style={comercialStyles.termsLine}>
-      Pagamento: <Text style={comercialStyles.termsStrong}>{snapshot.terms.paymentTerms}</Text>
+      Pagamento:{' '}
+      <Text style={comercialStyles.termsStrong}>
+        {keepOnOneLine(snapshot.terms.paymentTerms)}
+      </Text>
       {'  ·  '}
       {logistics.map((part, index) => (
         <Text key={index}>
@@ -370,14 +382,21 @@ function PremiumProductRow({ item }: Readonly<{ item: QuotePdfItemSnapshot }>) {
           {formatPtBrCurrency(item.unitPriceAmount)}
         </Text>
         <Text style={comercialStyles.itemValue}>
-          Bruto {formatPtBrCurrency(item.grossAmount)} · desconto do item{' '}
-          {formatRate(item.lineDiscountRate)}% ({formatPtBrCurrency(item.lineDiscountAmount)})
+          {
+            // One pre-composed string child: multi-expression JSX children get
+            // split into runs, and the line breaker treats run boundaries as
+            // break opportunities (orphaning '(' from its amount).
+            `Bruto ${formatPtBrCurrency(item.grossAmount)} · desconto do item ${formatRate(
+              item.lineDiscountRate,
+            )}% (${keepOnOneLine(formatPtBrCurrency(item.lineDiscountAmount))})`
+          }
         </Text>
         <Text style={comercialStyles.itemValue}>
-          Rateio desconto geral {formatPtBrCurrency(item.overallDiscountAllocationAmount)} ·{' '}
-          <Text style={comercialStyles.itemValueStrong}>
-            líquido {formatPtBrCurrency(item.netMerchandiseAmount)}
-          </Text>
+          {
+            `Rateio desconto geral ${formatPtBrCurrency(item.overallDiscountAllocationAmount)} · ${keepOnOneLine(
+              `líquido ${formatPtBrCurrency(item.netMerchandiseAmount)}`,
+            )}`
+          }
         </Text>
         <ItemTaxDetails item={item} />
       </View>
@@ -490,17 +509,29 @@ export function ComercialQuotePdfDocument({
             <TermsLine snapshot={snapshot} />
           </PdfSection>
 
-          <PdfSection title="Itens do orçamento" minPresenceAhead={132}>
-            <View style={comercialStyles.itemsCard}>
-              <View style={comercialStyles.itemHeader} wrap={false}>
-                <Text style={comercialStyles.itemImageColumn}>Imagem</Text>
-                <Text style={comercialStyles.itemDescriptionColumn}>Produto</Text>
-                <Text style={comercialStyles.itemValueColumn}>Valores fornecidos</Text>
+          {/* The section title, column header, and first item row are one
+              unbreakable block: a page break can never leave a bare heading
+              or an orphaned table header above an empty body. The title stays
+              outside the items card so the card's clipping never affects it. */}
+          <PdfSection minPresenceAhead={170}>
+            <View wrap={false}>
+              <Text style={pdfStyles.sectionTitle}>Itens do orçamento</Text>
+              <View style={comercialStyles.itemsCard}>
+                <View style={comercialStyles.itemHeader}>
+                  <Text style={comercialStyles.itemImageColumn}>Imagem</Text>
+                  <Text style={comercialStyles.itemDescriptionColumn}>Produto</Text>
+                  <Text style={comercialStyles.itemValueColumn}>Valores fornecidos</Text>
+                </View>
+                {snapshot.items.length > 0 ? (
+                  <PremiumProductRow item={snapshot.items[0]!} />
+                ) : null}
               </View>
-              {snapshot.items.map((item) => (
-                <PremiumProductRow key={item.lineId} item={item} />
-              ))}
             </View>
+            {snapshot.items.slice(1).map((item) => (
+              <View key={item.lineId} style={comercialStyles.itemsCard} wrap={false}>
+                <PremiumProductRow item={item} />
+              </View>
+            ))}
           </PdfSection>
 
           <PdfSection title="Fechamento" minPresenceAhead={210}>

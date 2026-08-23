@@ -13,6 +13,7 @@ import {
   formatPtBrCurrency,
   formatPtBrDate,
   formatPtBrDecimal,
+  keepOnOneLine,
 } from './format'
 import type {
   QuotePdfEmbeddedAsset,
@@ -45,7 +46,9 @@ export const pdfStyles = StyleSheet.create({
     // text inherits its rhythm from the `bodyRhythm` wrapper below instead.
     paddingTop: 104,
     paddingRight: 38,
-    paddingBottom: 52,
+    // Generous bottom padding keeps flowing body content clear of the fixed
+    // footer band (which sits at bottom: 22 + rule + text ≈ 40pt tall).
+    paddingBottom: 64,
     paddingLeft: 38,
   },
   bodyRhythm: { lineHeight: 1.42 },
@@ -307,7 +310,13 @@ export function ClientDetails({ snapshot }: Readonly<{ snapshot: QuotePdfSnapsho
   const identity = [snapshot.client.taxId, snapshot.client.stateRegistration]
     .filter(Boolean)
     .join(' · ')
-  const contacts = [snapshot.client.contactName, snapshot.client.email, snapshot.client.phone]
+  const contacts = [
+    snapshot.client.contactName,
+    snapshot.client.email,
+    // Bind the phone's internal space so it never splits mid-number when the
+    // contact line wraps; the '·' separators stay as legal break points.
+    snapshot.client.phone ? keepOnOneLine(snapshot.client.phone) : '',
+  ]
     .filter(Boolean)
     .join(' · ')
 
@@ -317,13 +326,17 @@ export function ClientDetails({ snapshot }: Readonly<{ snapshot: QuotePdfSnapsho
         {snapshot.client.tradeName ?? snapshot.client.legalName}
       </Text>
       {snapshot.client.tradeName ? <Text>{snapshot.client.legalName}</Text> : null}
-      {identity ? <Text style={pdfStyles.muted}>{identity}</Text> : null}
+      {/* Identity tokens keep their internal spaces unbreakable so tax IDs
+          never split across lines; '·' separators remain wrap points. */}
+      {identity ? <Text style={pdfStyles.muted}>{keepOnOneLine(identity)}</Text> : null}
       {snapshot.client.addressLines.map((line) => (
         <Text key={line} style={pdfStyles.muted}>
           {line}
         </Text>
       ))}
-      {contacts ? <Text style={pdfStyles.muted}>{contacts}</Text> : null}
+      {/* The phone number must not split mid-number when the contact line
+          wraps, so the whole identity block keeps its tokens unbreakable. */}
+      {contacts ? <Text style={pdfStyles.muted}>{keepOnOneLine(contacts)}</Text> : null}
     </View>
   )
 }

@@ -31,7 +31,7 @@ beforeAll(async () => {
       id, quote_id, version, payload, source_checksum, captured_by
     ) VALUES (
       ${snapshotId}, ${quoteId}, 1,
-      ${JSON.stringify({ quoteNumber: 'ORC-2026-000001' })}::jsonb,
+      ${JSON.stringify({ quoteNumber: 'ORC-2026-000001' })}::text::jsonb,
       ${'b'.repeat(64)}, 'integration-test'
     )
   `
