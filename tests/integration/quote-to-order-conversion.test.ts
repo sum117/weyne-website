@@ -231,8 +231,8 @@ describe('approved quote to order conversion on PostgreSQL', () => {
 
     await harness.sql`
       UPDATE quotes
-      SET customer_snapshot = ${JSON.stringify({ ...customerSnapshot, legalName: 'ALTERADO' })}::jsonb,
-          commercial_snapshot = ${JSON.stringify({ ...snapshot(), totals: { grandTotalAmount: '0.000000' } })}::jsonb
+      SET customer_snapshot = ${JSON.stringify({ ...customerSnapshot, legalName: 'ALTERADO' })}::text::jsonb,
+          commercial_snapshot = ${JSON.stringify({ ...snapshot(), totals: { grandTotalAmount: '0.000000' } })}::text::jsonb
       WHERE id = ${approved.id}
     `
     const [unchanged] = await harness.sql<
