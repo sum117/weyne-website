@@ -1,4 +1,5 @@
 import '@tanstack/react-start/server-only'
+import { eq } from 'drizzle-orm'
 import { betterAuth, type BetterAuthOptions } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { accounts, rateLimits, sessions, users, verifications } from '@/lib/db/schema/canonical'
@@ -153,11 +154,59 @@ export function createAuth(
       disableCSRFCheck: false,
       disableOriginCheck: false,
     },
+    /**
+     * Explicit allowlist of origins that may call the auth protocol routes.
+     * Better Auth already derives this from `baseURL`, but pinning it here
+     * makes the trust decision visible and auditable: exactly one origin —
+     * the configured application origin — may ever POST to `/api/auth/*`,
+     * in every environment. A future multi-origin need must widen THIS
+     * list deliberately; it can never appear by accident.
+     */
+    trustedOrigins: [new URL(config.baseURL).origin],
     session: {
       // Database-backed and revocable (ADR 0003): no stateless cookie cache.
       expiresIn: 60 * 60 * 24 * 7,
       updateAge: 60 * 60 * 24,
       cookieCache: { enabled: false },
+    },
+    /**
+     * Deactivated identities must not be able to start a NEW session.
+     * Deactivation (admin user management) deletes every live session row,
+     * which kills existing cookies; this hook closes the other half of the
+     * contract by refusing the session INSERT itself, so a disabled user who
+     * still knows a valid password gets the ordinary credential rejection —
+     * indistinguishable from a wrong password, so the sign-in form cannot be
+     * used to probe account status.
+     *
+     * The lookup is a plain query against the same canonical `users` table
+     * the admin surface writes to, so the two halves can never disagree about
+     * who is deactivated.
+     */
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session) => {
+            // The SAME drizzle instance createAuth was constructed with —
+            // never the process-wide connection manager, which resolves from
+            // ambient DATABASE_URL and would diverge wherever a caller
+            // injects an isolated database (tests, scripts, multi-tenant
+            // tooling).
+            const [user] = await database
+              .select({ disabledAt: users.disabledAt })
+              .from(users)
+              .where(eq(users.id, session.userId))
+              .limit(1)
+            if (user && user.disabledAt !== null) {
+              logStructuredEvent({
+                kind: 'auth',
+                event: 'auth.sign_in_blocked_deactivated',
+                userId: session.userId,
+              })
+              return false
+            }
+          },
+        },
+      },
     },
     rateLimit: {
       // Explicitly ON in every environment. Better Auth enables rate limiting

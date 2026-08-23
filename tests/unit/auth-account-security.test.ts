@@ -95,6 +95,26 @@ describe('rate limiting is configured and reachable', () => {
   })
 })
 
+describe('origin trust is pinned', () => {
+  it('allowlists exactly the configured application origin for /api/auth/*', async () => {
+    const source = code(await projectFile('src/lib/auth/auth.server.ts'))
+
+    // The allowlist must be explicit and derived from the single configured
+    // origin — never a literal second host, never a wildcard, never absent.
+    expect(source).toMatch(/trustedOrigins:\s*\[\s*new URL\(config\.baseURL\)\.origin\s*,?\s*\]/)
+  })
+
+  it('keeps CSRF and origin checks enabled in every environment', async () => {
+    const source = code(await projectFile('src/lib/auth/auth.server.ts'))
+
+    // Better Auth disables both under NODE_ENV=test by default; the source
+    // must keep them explicitly false so tests exercise the same posture as
+    // production.
+    expect(source).toMatch(/disableCSRFCheck:\s*false/)
+    expect(source).toMatch(/disableOriginCheck:\s*false/)
+  })
+})
+
 describe('password reset works without email delivery', () => {
   it('supplies a reset sender so Better Auth will mint tokens at all', async () => {
     const source = await projectFile('src/lib/auth/auth.server.ts')
