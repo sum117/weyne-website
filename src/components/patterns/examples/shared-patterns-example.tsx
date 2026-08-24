@@ -44,7 +44,7 @@ export function SharedPatternsExample({
 
   return (
     <AppQueryProvider>
-      <main className="min-h-screen bg-background px-4 py-8 text-foreground md:px-6 lg:px-8">
+      <div className="min-h-0 bg-background px-4 py-8 text-foreground md:px-6 lg:px-8">
         <div className="mx-auto grid w-full max-w-[96rem] gap-8">
           <PageHeader
             breadcrumbs={[
@@ -125,7 +125,7 @@ export function SharedPatternsExample({
             <PresentationPatternsExample />
           </section>
         </div>
-      </main>
+      </div>
     </AppQueryProvider>
   )
 }

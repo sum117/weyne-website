@@ -26,7 +26,7 @@ export const Route = createFileRoute('/app/produtos')({
 function ProductsCatalogPage() {
   const { session } = Route.useRouteContext()
   return (
-    <main className="min-h-0 min-w-0 flex-1 bg-background px-4 py-8 md:px-6 nav:px-8">
+    <div className="min-h-0 min-w-0 flex-1 bg-background px-4 py-8 md:px-6 nav:px-8">
       <div className="mx-auto w-full max-w-[96rem]">
         <ProductCatalog
           products={[]}
@@ -36,6 +36,6 @@ function ProductsCatalogPage() {
           )}
         />
       </div>
-    </main>
+    </div>
   )
 }

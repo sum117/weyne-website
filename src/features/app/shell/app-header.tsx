@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { useState, type ReactNode } from 'react'
 import { SignOut, UserCircle } from '@phosphor-icons/react/dist/ssr'
 import {
@@ -112,20 +113,19 @@ export function AppHeader({
         <ol className="flex min-w-0 items-center gap-1.5 overflow-hidden text-sm text-muted-foreground">
           {breadcrumbs.map((breadcrumb, index) => {
             const isCurrent = index === breadcrumbs.length - 1
-            const isHiddenOnNarrowViewport = breadcrumbs.length > 2 && index === 0
             return (
               <li
                 key={`${breadcrumb.href ?? 'current'}-${breadcrumb.label}`}
-                className={isHiddenOnNarrowViewport ? 'max-sm:hidden' : 'min-w-0 truncate'}
+                className="min-w-0 truncate"
               >
                 {index > 0 ? <span aria-hidden="true" className="mr-1.5">/</span> : null}
                 {breadcrumb.href && !isCurrent ? (
-                  <a
+                  <Link
                     className="rounded-sm transition-colors ease-house hover:text-foreground focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
-                    href={breadcrumb.href}
+                    to={breadcrumb.href}
                   >
                     {breadcrumb.label}
-                  </a>
+                  </Link>
                 ) : (
                   <span
                     aria-current={isCurrent ? 'page' : undefined}

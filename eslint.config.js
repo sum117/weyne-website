@@ -9,6 +9,7 @@ export default tseslint.config(
       '.output',
       '.nitro',
       '.tanstack',
+      '.worktrees/**',
       'node_modules',
       'artifacts/**',
       'spikes/**/dist/**',

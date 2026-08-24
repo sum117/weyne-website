@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { useEffect, useRef, type ReactNode } from 'react'
 import { WarningCircle } from '@phosphor-icons/react/dist/ssr'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -9,7 +10,7 @@ type AppRouteErrorProps = Readonly<{
   reset: () => void
 }>
 
-function useRouteStateHeadingFocus() {
+function useStandaloneRouteStateHeadingFocus() {
   const headingRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
@@ -27,24 +28,20 @@ function RouteStateFrame({
   busy?: boolean
 }>) {
   return (
-    <main
+    <div
       aria-busy={busy || undefined}
       className="min-w-0 flex-1 bg-background px-4 py-8 sm:px-6 nav:px-8"
-      id="app-main"
     >
       <div className="mx-auto w-full max-w-3xl">{children}</div>
-    </main>
+    </div>
   )
 }
 
 export function AppRoutePending() {
-  const headingRef = useRouteStateHeadingFocus()
-
   return (
     <RouteStateFrame busy>
       <section aria-busy="true" aria-labelledby="app-route-pending-heading" role="status">
         <h1
-          ref={headingRef}
           className="font-display text-3xl leading-tight text-foreground sm:text-4xl"
           data-app-route-focus
           id="app-route-pending-heading"
@@ -70,7 +67,7 @@ export function AppRoutePending() {
 }
 
 export function AppRouteError({ error: _error, reset }: AppRouteErrorProps) {
-  const headingRef = useRouteStateHeadingFocus()
+  const headingRef = useStandaloneRouteStateHeadingFocus()
 
   return (
     <RouteStateFrame>
@@ -96,7 +93,7 @@ export function AppRouteError({ error: _error, reset }: AppRouteErrorProps) {
 }
 
 export function AppRouteNotFound() {
-  const headingRef = useRouteStateHeadingFocus()
+  const headingRef = useStandaloneRouteStateHeadingFocus()
 
   return (
     <RouteStateFrame>
@@ -113,12 +110,12 @@ export function AppRouteNotFound() {
         <p className="mt-3 text-muted-foreground">
           O endereço informado não corresponde a uma página disponível nesta área.
         </p>
-        <a
+        <Link
           className="mt-6 inline-flex min-h-11 items-center rounded-md font-semibold text-primary underline decoration-secondary decoration-2 underline-offset-4 focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
-          href="/app"
+          to="/app"
         >
           Voltar ao início da área de gestão
-        </a>
+        </Link>
       </section>
     </RouteStateFrame>
   )

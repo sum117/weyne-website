@@ -87,14 +87,23 @@ test('the mobile Sheet is keyboard-operated and restores focus', async ({ page }
   await expect(trigger).toBeFocused()
 })
 
-test('skip link, account logout, and in-shell not-found behavior remain usable', async ({ page }) => {
-  await page.goto('/app')
+test('skip links target the persistent shell landmark on every mounted app route', async ({ page }) => {
+  for (const pathname of [
+    '/app',
+    '/app/produtos',
+    '/app/padroes',
+    '/app/relatorios',
+    '/app/configuracoes/auditoria',
+  ]) {
+    await page.goto(pathname)
+    const skipLink = page.getByRole('link', { name: 'Pular para o conteúdo principal' })
+    await skipLink.focus()
+    await skipLink.press('Enter')
+    await expect(page.locator('#app-main')).toBeFocused()
+  }
+})
 
-  const skipLink = page.getByRole('link', { name: 'Pular para o conteúdo principal' })
-  await skipLink.focus()
-  await skipLink.press('Enter')
-  await expect(page.locator('#app-main')).toBeFocused()
-
+test('account logout and in-shell not-found behavior remain usable', async ({ page }) => {
   await page.goto('/app/rota-inexistente')
   await expect(page.getByRole('heading', { level: 1, name: 'Página não encontrada' })).toBeVisible()
   await expect(

@@ -30,6 +30,7 @@ const SKIP_DIRECTORIES = new Set([
   'node_modules',
   'dist',
   '.git',
+  '.worktrees',
   '.output',
   '.tanStack'.toLowerCase(),
   'playwright-report',

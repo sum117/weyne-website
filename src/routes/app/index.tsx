@@ -46,7 +46,7 @@ function AppHomePage() {
   const deniedSection = negado ? deniedSectionLabel(negado) : null
 
   return (
-    <main className="min-w-0 flex-1 px-4 py-8 sm:px-6 nav:px-8" id="app-main">
+    <div className="min-w-0 flex-1 px-4 py-8 sm:px-6 nav:px-8">
       <section className="mx-auto min-w-0 w-full max-w-xl rounded-lg border border-border bg-card p-6 sm:p-10">
         <p className="font-sans text-sm font-semibold tracking-[0.16em] text-primary uppercase">
           Área de gestão
@@ -93,6 +93,6 @@ function AppHomePage() {
           <SignOutButton />
         </div>
       </section>
-    </main>
+    </div>
   )
 }

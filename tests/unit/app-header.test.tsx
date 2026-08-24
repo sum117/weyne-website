@@ -2,11 +2,15 @@
 
 import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { AnchorHTMLAttributes, PropsWithChildren } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AppHeader, getAppBreadcrumbs } from '@/features/app/shell/app-header'
 import type { AppSession } from '@/lib/auth/contract'
 
 vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, to, ...props }: PropsWithChildren<{ to: string }> & AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a {...props} href={to}>{children}</a>
+  ),
   useRouter: () => ({ invalidate: vi.fn(async () => undefined) }),
 }))
 

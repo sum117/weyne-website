@@ -5,6 +5,7 @@ node_modules
 .output
 .nitro
 .tanstack
+.worktrees/
 dist
 .vite
 

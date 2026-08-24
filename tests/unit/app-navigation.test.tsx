@@ -2,6 +2,7 @@
 
 import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import type { AnchorHTMLAttributes, PropsWithChildren } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AppShell } from '@/features/app/shell/app-shell'
 import type { AppSession } from '@/lib/auth/contract'
@@ -9,6 +10,9 @@ import type { AppSession } from '@/lib/auth/contract'
 const routerState = vi.hoisted(() => ({ pathname: '/app' }))
 
 vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, to, ...props }: PropsWithChildren<{ to: string }> & AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a {...props} href={to}>{children}</a>
+  ),
   useLocation: <T,>({ select }: { select: (location: { pathname: string }) => T }) =>
     select({ pathname: routerState.pathname }),
   useRouter: () => ({ invalidate: vi.fn(async () => undefined) }),
@@ -35,7 +39,7 @@ describe('AppShell navigation', () => {
   it('shows representatives only destinations permitted by the capability matrix', () => {
     render(
       <AppShell session={session('representative')}>
-        <main id="app-main">Conteúdo</main>
+        <div>Conteúdo</div>
       </AppShell>,
     )
 
@@ -56,7 +60,7 @@ describe('AppShell navigation', () => {
   it('moves focus into the mobile Sheet and restores it after Escape', async () => {
     const view = render(
       <AppShell session={session('admin')}>
-        <main id="app-main">Conteúdo</main>
+        <div>Conteúdo</div>
       </AppShell>,
     )
 
@@ -75,7 +79,7 @@ describe('AppShell navigation', () => {
     routerState.pathname = '/app/produtos'
     view.rerender(
       <AppShell session={session('admin')}>
-        <main id="app-main">Conteúdo</main>
+        <div>Conteúdo</div>
       </AppShell>,
     )
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

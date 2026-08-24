@@ -226,7 +226,7 @@ export function ReportsShell({
   }
 
   return (
-    <main className="bg-off-white min-h-screen px-4 py-8 sm:px-6 lg:px-8">
+    <div className="min-h-0 bg-background px-4 py-8 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-[1440px] space-y-6">
         <header className="space-y-2">
           <p className="text-sm font-semibold tracking-[0.14em] text-blue uppercase">
@@ -347,7 +347,7 @@ export function ReportsShell({
           ))}
         </Tabs>
       </div>
-    </main>
+    </div>
   )
 }
 

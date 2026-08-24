@@ -4,6 +4,7 @@ import '@testing-library/jest-dom/vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import type { AnchorHTMLAttributes, PropsWithChildren } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { AppShell } from '@/features/app/shell/app-shell'
 import {
@@ -16,6 +17,9 @@ import type { AppSession } from '@/lib/auth/contract'
 const routerState = vi.hoisted(() => ({ pathname: '/app' }))
 
 vi.mock('@tanstack/react-router', () => ({
+  Link: ({ children, to, ...props }: PropsWithChildren<{ to: string }> & AnchorHTMLAttributes<HTMLAnchorElement>) => (
+    <a {...props} href={to}>{children}</a>
+  ),
   useLocation: <T,>({ select }: { select: (location: { pathname: string }) => T }) =>
     select({ pathname: routerState.pathname }),
   useRouter: () => ({ invalidate: vi.fn(async () => undefined) }),
@@ -86,9 +90,9 @@ describe('authenticated app route states', () => {
   it('exposes a visible-on-focus skip link and moves route focus only after a pathname change', async () => {
     const view = render(
       <AppShell session={session()}>
-        <main id="app-main">
+        <div>
           <h1>Início</h1>
-        </main>
+        </div>
       </AppShell>,
     )
 
@@ -104,9 +108,9 @@ describe('authenticated app route states', () => {
     routerState.pathname = '/app/produtos'
     view.rerender(
       <AppShell session={session()}>
-        <main id="app-main">
+        <div>
           <h1>Produtos</h1>
-        </main>
+        </div>
       </AppShell>,
     )
 

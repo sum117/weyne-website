@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { useEffect, useState, type ReactNode } from 'react'
 import { House, List, Package, ShieldCheck } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
@@ -57,7 +58,7 @@ function AppNavigationLinks({
           const Icon = item.icon
           return (
             <li key={item.href}>
-              <a
+              <Link
                 aria-current={active ? 'page' : undefined}
                 className={cn(
                   'flex min-h-11 items-center rounded-md px-3 text-sm font-medium transition-colors ease-house focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar',
@@ -65,12 +66,12 @@ function AppNavigationLinks({
                     ? 'bg-sidebar-accent text-sidebar-accent-foreground'
                     : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
                 )}
-                href={item.href}
                 onClick={onNavigate}
+                to={item.href}
               >
                 <Icon aria-hidden="true" className="size-5 shrink-0" weight="light" />
                 {item.label}
-              </a>
+              </Link>
             </li>
           )
         })}
@@ -101,7 +102,6 @@ function AppNavigation({
         data-app-shell
       >
         <aside
-          aria-label="Navegação principal do aplicativo"
           className="hidden min-w-0 bg-sidebar text-sidebar-foreground nav:flex nav:flex-col"
           data-app-shell-sidebar
         >
@@ -134,7 +134,9 @@ function AppNavigation({
             pathname={pathname}
             session={session}
           />
-          {children}
+          <main className="min-h-0 min-w-0 flex-1" id="app-main" tabIndex={-1}>
+            {children}
+          </main>
         </div>
       </div>
 
