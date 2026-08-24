@@ -73,6 +73,17 @@ async function addLegacyCarrierColumns(sql: postgres.Sql): Promise<void> {
   for (const column of legacyColumns) {
     await sql.unsafe(`ALTER TABLE carriers ${column}`)
   }
+  await sql`
+    CREATE TABLE IF NOT EXISTS carrier_audit (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      actor_user_id uuid NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
+      actor_role text NOT NULL CHECK (actor_role IN ('admin', 'representative', 'read_only')),
+      carrier_id uuid NOT NULL REFERENCES carriers(id) ON DELETE RESTRICT,
+      action text NOT NULL CHECK (action IN ('carrier.create', 'carrier.update', 'carrier.archive')),
+      occurred_at timestamptz NOT NULL DEFAULT now(),
+      metadata jsonb NOT NULL CHECK (jsonb_typeof(metadata) = 'object')
+    )
+  `
 }
 
 beforeAll(async () => {
@@ -204,6 +215,7 @@ interface PublicResult {
 }
 
 const GET = (data?: unknown) => ({ data, context: {}, method: 'GET' })
+const POST = (data?: unknown) => ({ data, context: {}, method: 'POST' })
 
 /** The split handler resolves error ENVELOPES; thrown errors mean the
  * middleware chain rejected a genuine failure. Normalize both shapes. */
@@ -432,22 +444,31 @@ it('denies non-admin roles with 403 FORBIDDEN on admin-only commands', async () 
   }
 })
 
-it('binds the real Better Auth session used by the direct handler invocations', async () => {
+it('lets an authorized role mutate through the real split-handler boundary', async () => {
   const auth = await createAuthInstance()
   const { provisionCredentialUser } = await import('@/lib/auth/provisioning.server')
   await provisionCredentialUser(auth, {
-    name: 'Operador Leitor Dois',
-    email: 'reader2@boundary.test',
+    name: 'Operador Administrador Dois',
+    email: 'admin2@boundary.test',
     password: PASSWORD,
-    role: 'read_only',
+    role: 'admin',
   })
-  const cookie = await signIn(auth, 'reader2@boundary.test')
+  const cookie = await signIn(auth, 'admin2@boundary.test')
 
-  const { resolveSessionFromRequest } = await import('@/lib/auth/session.server')
-  const result = await resolveSessionFromRequest(
-    new Request('http://localhost:3000/app', { headers: { cookie } }),
+  const createCarrier = await splitHandler(
+    '@/features/app/carriers/carrier.functions',
+    'createCarrier',
   )
-  expect(result).toMatchObject({
-    user: { email: 'reader2@boundary.test', role: 'read_only' },
-  })
+  const result = await withRequestCookie(cookie, () =>
+    invokeEnvelope(createCarrier, POST({ name: 'Transportadora Controle Positivo' })),
+  )
+  expect(result?.error?.status).toBeUndefined()
+
+  // The split-handler success payload is framework-private in this runtime;
+  // the persisted row is the positive control proving the real handler ran
+  // with the authenticated cookie, ambient request binding, and authorization.
+  const rows = await client<{ name: string }[]>`
+    SELECT name FROM carriers WHERE name = 'Transportadora Controle Positivo'
+  `
+  expect(rows).toEqual([{ name: 'Transportadora Controle Positivo' }])
 })

@@ -51,10 +51,10 @@ describe('catalog authorization policy', () => {
     expect(authorizeCatalogAction(actors.readOnly, action)).toBe('forbidden')
   })
 
-  it.each(historyActions)('marks %s as unavailable for every role in Phase 1', (action) => {
-    expect(authorizeCatalogAction(actors.admin, action)).toBe('not_supported')
-    expect(authorizeCatalogAction(actors.representative, action)).toBe('not_supported')
-    expect(authorizeCatalogAction(actors.readOnly, action)).toBe('not_supported')
+  it.each(historyActions)('allows %s to price-enabled roles and denies read-only', (action) => {
+    expect(authorizeCatalogAction(actors.admin, action)).toBe('allow')
+    expect(authorizeCatalogAction(actors.representative, action)).toBe('allow')
+    expect(authorizeCatalogAction(actors.readOnly, action)).toBe('forbidden')
   })
 
   it.each(writeActions)('allows only administrators to perform %s', (action) => {

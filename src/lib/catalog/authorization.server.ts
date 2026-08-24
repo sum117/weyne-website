@@ -47,7 +47,7 @@ const CATALOG_ACTION_CAPABILITIES: Readonly<Record<CatalogAction, Capability | n
   'product.files.manage': 'product.manage_files',
   'price.read': 'price_list.view',
   'price.update': 'price_list.manage',
-  'price.history.read': null,
+  'price.history.read': 'price_history.view',
   'carrier.read': 'carrier.view',
   'carrier.search': 'carrier.view',
   'carrier.create': 'carrier.create',

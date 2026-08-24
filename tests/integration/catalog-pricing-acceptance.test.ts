@@ -229,39 +229,38 @@ describe('catalog and pricing final PostgreSQL acceptance', () => {
     expect(current.data.prices).toHaveLength(4)
     expect(JSON.stringify(current)).not.toMatch(/20\.123455|30\.654320/)
 
-    await expect(creator.pricing.getPriceHistory({
+    const history = await creator.pricing.getPriceHistory({
       productId: created.data.id,
       priceListId,
       limit: 10,
-    })).rejects.toMatchObject({ code: 'NOT_SUPPORTED', status: 404 })
-    const history = await harness.sql<{
-      oldAmount: string | null
-      newAmount: string
-      actor: string
-      reason: string
-      version: string
-    }[]>`
-      SELECT old_amount AS "oldAmount", new_amount AS "newAmount", actor, reason, version::text AS version
-      FROM product_price_history
-      WHERE product_id = ${created.data.id} AND price_list_id = ${priceListId}
-      ORDER BY version DESC
-    `
-    expect(history).toEqual([
-      {
-        oldAmount: '10.000001',
-        newAmount: winnerAmount,
-        actor: winnerActor,
-        reason: winnerReason,
-        version: '2',
+    })
+    expect(history).toMatchObject({
+      ok: true,
+      data: {
+        nextCursor: null,
+        items: [
+          {
+            oldAmount: '10.000001',
+            newAmount: winnerAmount,
+            actor: winnerActor,
+            reason: winnerReason,
+            version: '2',
+          },
+          {
+            oldAmount: null,
+            newAmount: '10.000001',
+            actor: 'admin:creator',
+            reason: 'Carga inicial exata',
+            version: '1',
+          },
+        ],
       },
-      {
-        oldAmount: null,
-        newAmount: '10.000001',
-        actor: 'admin:creator',
-        reason: 'Carga inicial exata',
-        version: '1',
-      },
-    ])
+    })
+    if (!history.ok) throw new Error('Expected price history')
+    expect(new Set(history.data.items.map((item) => item.id)).size).toBe(2)
+    expect(Date.parse(history.data.items[0]!.changedAt)).toBeGreaterThanOrEqual(
+      Date.parse(history.data.items[1]!.changedAt),
+    )
 
     const priceAudits = await harness.sql<{
       actorId: string
