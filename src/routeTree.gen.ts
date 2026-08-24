@@ -12,11 +12,12 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as EntrarRouteImport } from './routes/entrar'
-import { Route as AppPadroesRouteImport } from './routes/app_.padroes'
-import { Route as AppProdutosRouteImport } from './routes/app_.produtos'
-import { Route as AppRelatoriosRouteImport } from './routes/app_.relatorios'
+import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AppPadroesRouteImport } from './routes/app/padroes'
+import { Route as AppProdutosRouteImport } from './routes/app/produtos'
+import { Route as AppRelatoriosRouteImport } from './routes/app/relatorios'
 import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
-import { Route as AppConfiguracoesAuditoriaRouteImport } from './routes/app_.configuracoes_.auditoria'
+import { Route as AppConfiguracoesAuditoriaRouteImport } from './routes/app/configuracoes/auditoria'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -33,20 +34,25 @@ const EntrarRoute = EntrarRouteImport.update({
   path: '/entrar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPadroesRoute = AppPadroesRouteImport.update({
-  id: '/app_/padroes',
-  path: '/app/padroes',
-  getParentRoute: () => rootRouteImport,
+  id: '/padroes',
+  path: '/padroes',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppProdutosRoute = AppProdutosRouteImport.update({
-  id: '/app_/produtos',
-  path: '/app/produtos',
-  getParentRoute: () => rootRouteImport,
+  id: '/produtos',
+  path: '/produtos',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
-  id: '/app_/relatorios',
-  path: '/app/relatorios',
-  getParentRoute: () => rootRouteImport,
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => AppRoute,
 } as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
@@ -55,41 +61,43 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 } as any)
 const AppConfiguracoesAuditoriaRoute =
   AppConfiguracoesAuditoriaRouteImport.update({
-    id: '/app_/configuracoes_/auditoria',
-    path: '/app/configuracoes/auditoria',
-    getParentRoute: () => rootRouteImport,
+    id: '/configuracoes/auditoria',
+    path: '/configuracoes/auditoria',
+    getParentRoute: () => AppRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/app': typeof AppRouteWithChildren
   '/entrar': typeof EntrarRoute
   '/app/padroes': typeof AppPadroesRoute
   '/app/produtos': typeof AppProdutosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/app/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/configuracoes/auditoria': typeof AppConfiguracoesAuditoriaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
   '/entrar': typeof EntrarRoute
   '/app/padroes': typeof AppPadroesRoute
   '/app/produtos': typeof AppProdutosRoute
   '/app/relatorios': typeof AppRelatoriosRoute
+  '/app': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/app/configuracoes/auditoria': typeof AppConfiguracoesAuditoriaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/app': typeof AppRoute
+  '/app': typeof AppRouteWithChildren
   '/entrar': typeof EntrarRoute
-  '/app_/padroes': typeof AppPadroesRoute
-  '/app_/produtos': typeof AppProdutosRoute
-  '/app_/relatorios': typeof AppRelatoriosRoute
+  '/app/padroes': typeof AppPadroesRoute
+  '/app/produtos': typeof AppProdutosRoute
+  '/app/relatorios': typeof AppRelatoriosRoute
+  '/app/': typeof AppIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
-  '/app_/configuracoes_/auditoria': typeof AppConfiguracoesAuditoriaRoute
+  '/app/configuracoes/auditoria': typeof AppConfiguracoesAuditoriaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -100,16 +108,17 @@ export interface FileRouteTypes {
     | '/app/padroes'
     | '/app/produtos'
     | '/app/relatorios'
+    | '/app/'
     | '/api/auth/$'
     | '/app/configuracoes/auditoria'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/app'
     | '/entrar'
     | '/app/padroes'
     | '/app/produtos'
     | '/app/relatorios'
+    | '/app'
     | '/api/auth/$'
     | '/app/configuracoes/auditoria'
   id:
@@ -117,22 +126,19 @@ export interface FileRouteTypes {
     | '/'
     | '/app'
     | '/entrar'
-    | '/app_/padroes'
-    | '/app_/produtos'
-    | '/app_/relatorios'
+    | '/app/padroes'
+    | '/app/produtos'
+    | '/app/relatorios'
+    | '/app/'
     | '/api/auth/$'
-    | '/app_/configuracoes_/auditoria'
+    | '/app/configuracoes/auditoria'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AppRoute: typeof AppRoute
+  AppRoute: typeof AppRouteWithChildren
   EntrarRoute: typeof EntrarRoute
-  AppPadroesRoute: typeof AppPadroesRoute
-  AppProdutosRoute: typeof AppProdutosRoute
-  AppRelatoriosRoute: typeof AppRelatoriosRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
-  AppConfiguracoesAuditoriaRoute: typeof AppConfiguracoesAuditoriaRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -158,26 +164,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EntrarRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app_/padroes': {
-      id: '/app_/padroes'
-      path: '/app/padroes'
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/padroes': {
+      id: '/app/padroes'
+      path: '/padroes'
       fullPath: '/app/padroes'
       preLoaderRoute: typeof AppPadroesRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/app_/produtos': {
-      id: '/app_/produtos'
-      path: '/app/produtos'
+    '/app/produtos': {
+      id: '/app/produtos'
+      path: '/produtos'
       fullPath: '/app/produtos'
       preLoaderRoute: typeof AppProdutosRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/app_/relatorios': {
-      id: '/app_/relatorios'
-      path: '/app/relatorios'
+    '/app/relatorios': {
+      id: '/app/relatorios'
+      path: '/relatorios'
       fullPath: '/app/relatorios'
       preLoaderRoute: typeof AppRelatoriosRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AppRoute
     }
     '/api/auth/$': {
       id: '/api/auth/$'
@@ -186,25 +199,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app_/configuracoes_/auditoria': {
-      id: '/app_/configuracoes_/auditoria'
-      path: '/app/configuracoes/auditoria'
+    '/app/configuracoes/auditoria': {
+      id: '/app/configuracoes/auditoria'
+      path: '/configuracoes/auditoria'
       fullPath: '/app/configuracoes/auditoria'
       preLoaderRoute: typeof AppConfiguracoesAuditoriaRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AppRoute
     }
   }
 }
 
-const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AppRoute: AppRoute,
-  EntrarRoute: EntrarRoute,
+interface AppRouteChildren {
+  AppPadroesRoute: typeof AppPadroesRoute
+  AppProdutosRoute: typeof AppProdutosRoute
+  AppRelatoriosRoute: typeof AppRelatoriosRoute
+  AppIndexRoute: typeof AppIndexRoute
+  AppConfiguracoesAuditoriaRoute: typeof AppConfiguracoesAuditoriaRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
   AppPadroesRoute: AppPadroesRoute,
   AppProdutosRoute: AppProdutosRoute,
   AppRelatoriosRoute: AppRelatoriosRoute,
-  ApiAuthSplatRoute: ApiAuthSplatRoute,
+  AppIndexRoute: AppIndexRoute,
   AppConfiguracoesAuditoriaRoute: AppConfiguracoesAuditoriaRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  EntrarRoute: EntrarRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

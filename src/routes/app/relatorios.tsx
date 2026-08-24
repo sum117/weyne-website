@@ -14,7 +14,7 @@ function todayInBusinessTimezone() {
   }).format(new Date())
 }
 
-export const Route = createFileRoute('/app_/relatorios')({
+export const Route = createFileRoute('/app/relatorios')({
   validateSearch: (search) => search as Record<string, unknown>,
   beforeLoad: ({ location }) => requireAuthenticatedRoute(location),
   head: () => ({

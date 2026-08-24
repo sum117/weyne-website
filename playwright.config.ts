@@ -14,7 +14,7 @@ export default defineConfig({
   // Quote-editor specs are wired to their own Vite fixture config
   // (playwright.quotes.config.ts, `bun run test:e2e:quotes`); under this
   // production runtime the /tests/e2e/fixtures/* routes 404.
-  testIgnore: 'tests/e2e/quotes/**',
+  testIgnore: ['tests/e2e/quotes/**', 'tests/e2e/authenticated-shell.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

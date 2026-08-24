@@ -53,6 +53,7 @@
     "db:down": "bun scripts/local-database.ts down",
     "test:watch": "vitest --config vitest.config.ts",
     "test:e2e": "playwright test",
+    "test:e2e:auth-shell": "bun run build && bun scripts/run-authenticated-shell-e2e.ts",
     "test:e2e:quotes": "playwright test --config=playwright.quotes.config.ts",
     "test:production-smoke": "bun run build:app && bun scripts/run-production-smoke.ts",
     "test:visual": "playwright test --config=playwright.visual.config.ts",

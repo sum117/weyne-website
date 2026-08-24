@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
  *
  * The acceptance criterion "unauthenticated `/app` redirects to login" is one
  * `beforeLoad` away from silently regressing: a future card adding
- * `src/routes/app_.clientes.tsx` without the guard would ship an open
+ * a nested child route without the parent layout would ship an open
  * application route, and no existing test would notice. This file fails the
  * build in that case.
  *
@@ -16,20 +16,30 @@ import { describe, expect, it } from 'vitest'
  */
 
 const ROUTES_DIRECTORY = resolve(process.cwd(), 'src/routes')
+const GENERATED_ROUTE_TREE = resolve(process.cwd(), 'src/routeTree.gen.ts')
 const GUARD_CALLS = [
   'requireAuthenticatedRoute(location)',
   'requireCapableRoute(location',
 ]
 
-async function routeFiles(): Promise<Array<{ name: string; source: string }>> {
-  const entries = await readdir(ROUTES_DIRECTORY, { withFileTypes: true })
+async function routeFiles(
+  directory = ROUTES_DIRECTORY,
+  relativeDirectory = '',
+): Promise<Array<{ name: string; source: string }>> {
+  const entries = await readdir(directory, { withFileTypes: true })
   const files: Array<{ name: string; source: string }> = []
   for (const entry of entries) {
-    if (!entry.isFile() || !/\.tsx?$/.test(entry.name)) continue
-    files.push({
-      name: entry.name,
-      source: await readFile(resolve(ROUTES_DIRECTORY, entry.name), 'utf8'),
-    })
+    const relativeName = `${relativeDirectory}${entry.name}`
+    if (entry.isDirectory()) {
+      files.push(
+        ...(await routeFiles(resolve(directory, entry.name), `${relativeName}/`)),
+      )
+    } else if (/\.tsx?$/.test(entry.name)) {
+      files.push({
+        name: relativeName,
+        source: await readFile(resolve(directory, entry.name), 'utf8'),
+      })
+    }
   }
   return files
 }
@@ -38,7 +48,7 @@ const files = await routeFiles()
 
 /** Every route file whose URL path lives under `/app`. */
 const applicationRoutes = files.filter(
-  (file) => file.name === 'app.tsx' || file.name.startsWith('app_.'),
+  (file) => file.name === 'app.tsx' || file.name.startsWith('app/'),
 )
 
 describe('authenticated route boundary', () => {
@@ -47,28 +57,32 @@ describe('authenticated route boundary', () => {
     expect(applicationRoutes.length).toBeGreaterThan(0)
   })
 
-  it('guards every /app route with the shared server-side check', () => {
-    const unguarded = applicationRoutes
-      .filter(
-        (file) =>
-          !GUARD_CALLS.some((guardCall) => file.source.includes(guardCall)),
-      )
-      .map((file) => file.name)
+  it('guards the shared /app layout before it renders nested content', () => {
+    const layout = files.find((file) => file.name === 'app.tsx')
 
-    expect(
-      unguarded,
-      'every route under /app must call a shared route guard in beforeLoad',
-    ).toEqual([])
+    // `beforeLoad` runs before the loader and before any render, so an
+    // anonymous visitor never sees protected markup. A component-level
+    // check would flash the content first.
+    expect(layout?.source).toMatch(
+      /beforeLoad:\s*\(\{\s*location\s*\}\)\s*=>\s*requireAuthenticatedRoute\(location\)/,
+    )
+    expect(layout?.source).toContain('<Outlet />')
   })
 
-  it('runs the guard in beforeLoad, never in the component', () => {
-    for (const file of applicationRoutes) {
-      // `beforeLoad` runs before the loader and before any render, so an
-      // anonymous visitor never sees protected markup. A component-level
-      // check would flash the content first.
-      expect(file.source, file.name).toMatch(
-        /beforeLoad:\s*\(\{\s*location\s*\}\)\s*=>\s*require(?:Authenticated|Capable)Route\(location/,
-      )
+  it('keeps nested application routes under the guarded layout', async () => {
+    const nestedRoutes = applicationRoutes.filter((file) => file.name.startsWith('app/'))
+    const generatedTree = await readFile(GENERATED_ROUTE_TREE, 'utf8')
+
+    expect(nestedRoutes.length).toBeGreaterThan(0)
+    expect(
+      files.filter((file) => file.name.startsWith('app_.')).map((file) => file.name),
+      'legacy flat /app route files bypass the shared layout',
+    ).toEqual([])
+    expect(generatedTree).toContain('getParentRoute: () => AppRoute')
+    expect(generatedTree).toContain('AppRoute._addFileChildren')
+
+    for (const file of nestedRoutes) {
+      expect(file.source, file.name).toContain('createFileRoute(')
     }
   })
 

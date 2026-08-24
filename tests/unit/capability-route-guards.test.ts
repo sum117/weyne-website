@@ -18,15 +18,24 @@ import { describe, expect, it } from 'vitest'
 
 const ROUTES_DIRECTORY = resolve(process.cwd(), 'src/routes')
 
-async function routeFiles(): Promise<Array<{ name: string; source: string }>> {
-  const entries = await readdir(ROUTES_DIRECTORY, { withFileTypes: true })
+async function routeFiles(
+  directory = ROUTES_DIRECTORY,
+  relativeDirectory = '',
+): Promise<Array<{ name: string; source: string }>> {
+  const entries = await readdir(directory, { withFileTypes: true })
   const files: Array<{ name: string; source: string }> = []
   for (const entry of entries) {
-    if (!entry.isFile() || !/\.tsx?$/.test(entry.name)) continue
-    files.push({
-      name: entry.name,
-      source: await readFile(resolve(ROUTES_DIRECTORY, entry.name), 'utf8'),
-    })
+    const relativeName = `${relativeDirectory}${entry.name}`
+    if (entry.isDirectory()) {
+      files.push(
+        ...(await routeFiles(resolve(directory, entry.name), `${relativeName}/`)),
+      )
+    } else if (/\.tsx?$/.test(entry.name)) {
+      files.push({
+        name: relativeName,
+        source: await readFile(resolve(directory, entry.name), 'utf8'),
+      })
+    }
   }
   return files
 }
@@ -34,11 +43,11 @@ async function routeFiles(): Promise<Array<{ name: string; source: string }>> {
 /** Route paths that gate on a capability beyond authentication. */
 const CAPABILITY_GATED_ROUTES = [
   {
-    file: 'app_.configuracoes_.auditoria.tsx',
+    file: 'app/configuracoes/auditoria.tsx',
     capability: 'audit.view',
   },
   {
-    file: 'app_.produtos.tsx',
+    file: 'app/produtos.tsx',
     capability: 'product.view',
   },
 ] as const

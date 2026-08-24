@@ -6,7 +6,7 @@ import { requireAuthenticatedRoute } from '@/features/app/auth/route-guard'
 
 type PatternSearch = Record<string, unknown>
 
-export const Route = createFileRoute('/app_/padroes')({
+export const Route = createFileRoute('/app/padroes')({
   validateSearch: (search): PatternSearch => search,
   beforeLoad: ({ location }) => requireAuthenticatedRoute(location),
   head: () => ({

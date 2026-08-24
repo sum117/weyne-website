@@ -20,12 +20,40 @@ export type SignOutButtonProps = Readonly<{
   navigate?: (path: string) => void
 }>
 
-export function SignOutButton({
+/**
+ * Shares the session termination sequence between button and menu controls.
+ *
+ * Consumers may safely close their overlay before invoking `signOut`; the
+ * document redirect remains intentionally full-page after invalidation.
+ */
+export function useSignOut({
   signOut = signOutCurrentSession,
   navigate,
 }: SignOutButtonProps = {}) {
   const router = useRouter()
   const [pending, setPending] = useState(false)
+
+  const terminateSession = async () => {
+    if (pending) return
+    setPending(true)
+    try {
+      await signOut()
+    } catch {
+      // A transport failure must not strand the visitor inside the
+      // application. The server-side session may or may not survive,
+      // so leaving is the safe outcome either way: the guard will
+      // re-check the cookie on the next request.
+    }
+    await router.invalidate()
+    if (navigate) navigate(LOGIN_PATH)
+    else window.location.assign(LOGIN_PATH)
+  }
+
+  return { pending, signOut: terminateSession }
+}
+
+export function SignOutButton(props: SignOutButtonProps = {}) {
+  const { pending, signOut } = useSignOut(props)
 
   return (
     <Button
@@ -33,22 +61,7 @@ export function SignOutButton({
       variant="ghost"
       size="default"
       disabled={pending}
-      onClick={() => {
-        setPending(true)
-        void (async () => {
-          try {
-            await signOut()
-          } catch {
-            // A transport failure must not strand the visitor inside the
-            // application. The server-side session may or may not survive,
-            // so leaving is the safe outcome either way: the guard will
-            // re-check the cookie on the next request.
-          }
-          await router.invalidate()
-          if (navigate) navigate(LOGIN_PATH)
-          else window.location.assign(LOGIN_PATH)
-        })()
-      }}
+      onClick={() => void signOut()}
     >
       {pending ? 'Saindo…' : 'Sair'}
     </Button>

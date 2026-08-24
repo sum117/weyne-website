@@ -14,7 +14,7 @@ import { requireCapableRoute } from '@/features/app/auth/route-guard'
  * unauthorized state from the server's `FORBIDDEN` result. There are no edit
  * or delete actions anywhere on this surface.
  */
-export const Route = createFileRoute('/app_/configuracoes_/auditoria')({
+export const Route = createFileRoute('/app/configuracoes/auditoria')({
   validateSearch: (search) => search as Record<string, unknown>,
   beforeLoad: ({ location }) =>
     requireCapableRoute(location, 'audit.view'),

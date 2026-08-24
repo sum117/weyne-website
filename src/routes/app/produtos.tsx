@@ -12,7 +12,7 @@ import { hasCapability } from '@/lib/auth/capabilities'
  * only: the catalog's server functions re-check every mutation through
  * `requireCapability`.
  */
-export const Route = createFileRoute('/app_/produtos')({
+export const Route = createFileRoute('/app/produtos')({
   beforeLoad: ({ location }) => requireCapableRoute(location, 'product.view'),
   head: () => ({
     meta: [
@@ -26,7 +26,7 @@ export const Route = createFileRoute('/app_/produtos')({
 function ProductsCatalogPage() {
   const { session } = Route.useRouteContext()
   return (
-    <main className="min-h-screen bg-off-white px-4 py-8 md:px-6 lg:px-8">
+    <main className="min-h-0 min-w-0 flex-1 bg-background px-4 py-8 md:px-6 nav:px-8">
       <div className="mx-auto w-full max-w-[96rem]">
         <ProductCatalog
           products={[]}
