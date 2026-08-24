@@ -328,6 +328,7 @@ export function AuditActivityViewer({
   const committed = useMemo(() => parseAuditSearch(search), [search])
   const [draft, setDraft] = useState<AuditActivitySearchState>(committed)
   const [openEventId, setOpenEventId] = useState<string | null>(null)
+  const detailTriggerRef = useRef<HTMLButtonElement | null>(null)
   // Issues from the last rejected local submission; cleared on commit.
   const [submissionIssues, setSubmissionIssues] = useState<readonly string[]>([])
   // Cursor trail for stepping back through keyset pages within this visit.
@@ -440,6 +441,13 @@ export function AuditActivityViewer({
       cursor: previousCursor,
       page: Math.max(1, committed.page - 1),
     })
+  }
+
+  const closeEvent = () => {
+    setOpenEventId(null)
+    // The controlled Sheet has no SheetTrigger primitive to restore focus for
+    // us. Return keyboard users to the exact Details control that opened it.
+    window.requestAnimationFrame(() => detailTriggerRef.current?.focus())
   }
 
   const openEvent = page?.items.find((item) => item.id === openEventId) ?? null
@@ -765,7 +773,10 @@ export function AuditActivityViewer({
                             size="sm"
                             aria-haspopup="dialog"
                             aria-expanded={openEventId === item.id}
-                            onClick={() => setOpenEventId(item.id)}
+                            onClick={(event) => {
+                              detailTriggerRef.current = event.currentTarget
+                              setOpenEventId(item.id)
+                            }}
                           >
                             Detalhes
                           </Button>
@@ -809,7 +820,10 @@ export function AuditActivityViewer({
                       size="sm"
                       aria-haspopup="dialog"
                       aria-expanded={openEventId === item.id}
-                      onClick={() => setOpenEventId(item.id)}
+                      onClick={(event) => {
+                        detailTriggerRef.current = event.currentTarget
+                        setOpenEventId(item.id)
+                      }}
                     >
                       Detalhes
                     </Button>
@@ -855,7 +869,7 @@ export function AuditActivityViewer({
 
       <EventDetailSheet
         event={openEvent}
-        onClose={() => setOpenEventId(null)}
+        onClose={closeEvent}
       />
     </div>
   )

@@ -92,6 +92,10 @@ function resolveSchemaName(): string {
   return configured
 }
 
+function resolveQuotedSchemaName(): string {
+  return `"${resolveSchemaName()}"`
+}
+
 /**
  * Batch entity authorization. A quote is viewable when its commercial
  * resource scope row exists; missing rows resolve as not authorized, so the
@@ -104,12 +108,11 @@ async function authorizeQuoteEntities(
   const quoteIds = [...new Set(entities.map((entity) => entity.id))]
   if (quoteIds.length === 0) return new Set()
   const sql = await sqlClient()
-  const schemaName = resolveSchemaName()
-  await sql.unsafe(`SET search_path TO "${schemaName}", public`)
+  const quotedSchema = resolveQuotedSchemaName()
   const placeholders = quoteIds.map((_id, index) => `$${index + 1}::uuid`).join(', ')
   const rows = await sql.unsafe<Array<{ resourceId: string }>>(
     `SELECT resource_id::text AS "resourceId"
-    FROM commercial_resource_scopes
+    FROM ${quotedSchema}.commercial_resource_scopes
     WHERE resource_type = 'quote'
       AND resource_id IN (${placeholders})`,
     quoteIds,
@@ -122,12 +125,11 @@ async function loadActorNames(
 ): Promise<ReadonlyMap<string, string>> {
   if (actorIds.length === 0) return new Map()
   const sql = await sqlClient()
-  const schemaName = resolveSchemaName()
-  await sql.unsafe(`SET search_path TO "${schemaName}", public`)
+  const quotedSchema = resolveQuotedSchemaName()
   const placeholders = actorIds.map((_id, index) => `$${index + 1}`).join(', ')
   const rows = await sql.unsafe<Array<{ id: string; name: string }>>(
     `SELECT id::text AS id, name
-    FROM users
+    FROM ${quotedSchema}.users
     WHERE id IN (${placeholders})`,
     [...actorIds],
   )

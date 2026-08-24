@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test'
 import {
   AUTHENTICATED_SHELL_BASE_URL,
   AUTHENTICATED_SHELL_PORT,
+  AUDIT_E2E_SCHEMA,
 } from './tests/e2e/authenticated-shell.fixture'
 import { storageStatePath } from './tests/e2e/authenticated-shell.global-setup'
 
@@ -12,7 +13,7 @@ if (!databaseUrl) {
 
 export default defineConfig({
   testDir: './tests/e2e',
-  testMatch: 'authenticated-shell.spec.ts',
+  testMatch: ['authenticated-shell.spec.ts', 'audit-activity.spec.ts'],
   fullyParallel: false,
   workers: 1,
   timeout: 30_000,
@@ -36,6 +37,7 @@ export default defineConfig({
       HOST: '127.0.0.1',
       NODE_ENV: 'development',
       PORT: String(AUTHENTICATED_SHELL_PORT),
+      WEYNE_DB_SCHEMA: AUDIT_E2E_SCHEMA,
     },
     reuseExistingServer: false,
     timeout: 60_000,

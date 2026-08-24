@@ -206,7 +206,9 @@ describe('PostgreSQL quote audit adapter', () => {
               commandId: 'request-3',
               beforeState: { status: 'draft' },
               afterState: { status: 'sent' },
-              occurredAt: new Date('2026-08-17T12:00:00.000Z'),
+              // postgres.js returns timestamptz columns as ISO strings for
+              // raw queries, unlike Drizzle's typed table adapter.
+              occurredAt: '2026-08-17T12:00:00.000Z',
             },
           ]
         : [],
@@ -244,6 +246,7 @@ describe('PostgreSQL quote audit adapter', () => {
       correlationId: 'request-3',
       entity: { type: 'quote', id: '10000000-0000-4000-8000-000000000001' },
     })
+    expect(rows[0]?.occurredAt).toEqual(new Date('2026-08-17T12:00:00.000Z'))
   })
 })
 

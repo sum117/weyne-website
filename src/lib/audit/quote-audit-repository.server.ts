@@ -14,7 +14,7 @@ type QuoteAuditRow = Readonly<{
   commandId: string
   beforeState: unknown
   afterState: unknown
-  occurredAt: Date
+  occurredAt: Date | string
 }>
 
 type QuoteDisplayRow = Readonly<{ id: string; quoteNumber: string }>
@@ -30,13 +30,8 @@ export function createPostgresQuoteAuditRepository(options: Readonly<{
   }
   const quotedSchema = `"${schemaName}"`
 
-  async function useSchema(): Promise<void> {
-    await sql.unsafe(`SET search_path TO ${quotedSchema}, public`)
-  }
-
   return {
     async listEvents(input: AuditActivityRepositoryQuery) {
-      await useSchema()
       const clauses: string[] = []
       const parameters: unknown[] = []
       const add = (fragment: string, ...values: unknown[]) => {
@@ -82,7 +77,7 @@ export function createPostgresQuoteAuditRepository(options: Readonly<{
           qa.before_state AS "beforeState",
           qa.after_state AS "afterState",
           qa.occurred_at AS "occurredAt"
-        FROM quote_audit qa
+        FROM ${quotedSchema}.quote_audit qa
         ${where}
         ORDER BY qa.occurred_at DESC, qa.id DESC
         LIMIT ${limitParameter}`,
@@ -94,7 +89,7 @@ export function createPostgresQuoteAuditRepository(options: Readonly<{
         actorId: row.actorId,
         action: row.operation,
         entity: { type: 'quote' as const, id: row.quoteId },
-        occurredAt: row.occurredAt,
+        occurredAt: new Date(row.occurredAt),
         correlationId: row.commandId,
         before: row.beforeState,
         after: row.afterState,
@@ -111,11 +106,10 @@ export function createPostgresQuoteAuditRepository(options: Readonly<{
       )]
       if (quoteIds.length === 0) return new Map<string, string>()
 
-      await useSchema()
       const placeholders = quoteIds.map((_id, index) => `$${index + 1}::uuid`).join(', ')
       const rows = await sql.unsafe<QuoteDisplayRow[]>(
         `SELECT id, quote_number AS "quoteNumber"
-        FROM quotes
+        FROM ${quotedSchema}.quotes
         WHERE id IN (${placeholders})`,
         quoteIds,
       )

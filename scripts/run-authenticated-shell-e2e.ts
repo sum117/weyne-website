@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { spawn, spawnSync } from 'node:child_process'
 import {
   AUTHENTICATED_SHELL_BASE_URL,
+  AUDIT_E2E_SCHEMA,
 } from '../tests/e2e/authenticated-shell.fixture'
 
 const containerName = `weyne-authenticated-shell-e2e-${randomUUID().slice(0, 8)}`
@@ -83,6 +84,7 @@ try {
     DATABASE_URL: databaseUrl.toString(),
     E2E_DATABASE_URL: databaseUrl.toString(),
     NODE_ENV: 'development',
+    WEYNE_DB_SCHEMA: AUDIT_E2E_SCHEMA,
   }
 
   await run(process.execPath, ['scripts/prepare-authenticated-shell-e2e.ts'], environment)
