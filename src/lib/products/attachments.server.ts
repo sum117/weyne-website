@@ -229,7 +229,7 @@ export function createProductAttachmentService(dependencies: ServiceDependencies
   ): Promise<ProductAttachmentActor> {
     const actor = await dependencies.authenticate(actorInput)
     if (!actor) throw new ProductAttachmentApiError('UNAUTHENTICATED')
-    const action = operation === 'read' ? 'product.read' : 'product.update'
+    const action = operation === 'read' ? 'product.files.read' : 'product.files.manage'
     if (authorizeCatalogAction(actor, action) !== 'allow') {
       throw new ProductAttachmentApiError('FORBIDDEN')
     }

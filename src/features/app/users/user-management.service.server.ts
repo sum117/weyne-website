@@ -10,6 +10,7 @@ import {
 } from '@/lib/domain/result'
 import { parseRequest } from '@/lib/server/request.schema'
 import { serializeDate, serializeNullableDate } from '@/lib/server/serialization'
+import { hasCapability, type Capability, type Role } from '@/lib/auth/capabilities'
 import type {
   ManagedUser,
   ManagedUserListItem,
@@ -41,7 +42,7 @@ import {
 
 export type UserManagementActor = Readonly<{
   id: string
-  role: 'admin' | 'representative' | 'read_only'
+  role: Role
 }>
 
 export type UserManagementAuditEvent = Readonly<{
@@ -156,12 +157,12 @@ function auditEvent(
 export function createUserManagementService(
   dependencies: ServiceDependencies,
 ): UserManagementServiceContract {
-  async function authorizeAdmin(): Promise<
+  async function authorizeAdmin(capability: Capability): Promise<
     Result<UserManagementActor, UserManagementServiceError>
   > {
     const actor = await dependencies.authenticate()
     if (!actor) return failure({ category: 'unauthenticated' as const })
-    if (actor.role !== 'admin') return failure({ category: 'forbidden' as const })
+    if (!hasCapability(actor.role, capability)) return failure({ category: 'forbidden' as const })
     return success(actor)
   }
 
@@ -229,7 +230,7 @@ export function createUserManagementService(
 
   return Object.freeze({
     async list(input) {
-      const actor = await authorizeAdmin()
+      const actor = await authorizeAdmin('user.update_role')
       if (!actor.ok) return actor
       const request = parseRequest(listManagedUsersRequestSchema, input)
       if (!request.ok) return request
@@ -276,7 +277,7 @@ export function createUserManagementService(
     },
 
     async getUser(input) {
-      const actor = await authorizeAdmin()
+      const actor = await authorizeAdmin('user.update_role')
       if (!actor.ok) return actor
       const request = parseRequest(managedUserIdRequestSchema, input)
       if (!request.ok) return request
@@ -300,7 +301,7 @@ export function createUserManagementService(
     },
 
     async assignRole(input) {
-      const actor = await authorizeAdmin()
+      const actor = await authorizeAdmin('user.update_role')
       if (!actor.ok) return actor
       const request = parseRequest(assignUserRoleRequestSchema, input)
       if (!request.ok) return request
@@ -355,7 +356,7 @@ export function createUserManagementService(
     },
 
     async setActive(input) {
-      const actor = await authorizeAdmin()
+      const actor = await authorizeAdmin('user.disable')
       if (!actor.ok) return actor
       const request = parseRequest(setUserActiveRequestSchema, input)
       if (!request.ok) return request
@@ -421,7 +422,7 @@ export function createUserManagementService(
     },
 
     async revokeSessions(input) {
-      const actor = await authorizeAdmin()
+      const actor = await authorizeAdmin('user.disable')
       if (!actor.ok) return actor
       const request = parseRequest(managedUserIdRequestSchema, input)
       if (!request.ok) return request

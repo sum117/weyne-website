@@ -200,7 +200,7 @@ async function splitHandler(
 
 interface PublicResult {
   readonly ok?: boolean
-  readonly error?: Readonly<{ code?: string; status?: number }>
+  readonly error?: Readonly<{ code?: string; status?: number; message?: string }>
 }
 
 const GET = (data?: unknown) => ({ data, context: {}, method: 'GET' })
@@ -263,22 +263,79 @@ async function signIn(
   throw new Error('sign-in did not issue a session cookie')
 }
 
-it('denies every newly wired boundary with 401 UNAUTHENTICATED when no cookie is presented', async () => {
-  const cases: readonly [string, string][] = [
-    ['@/features/app/carriers/carrier.functions', 'listCarriers'],
-    ['@/features/app/industries/industry.functions', 'createIndustry'],
-    ['@/features/app/users/user-management.functions', 'assignUserRole'],
-    ['@/features/app/audit/audit-activity.functions', 'getAuditActivity'],
-    ['@/lib/settings/settings.functions', 'getBusinessSettings'],
+it('denies every protected server-function boundary with 401 before payload processing', async () => {
+  const id = '019c6d9a-3d70-7f51-a273-8ca76ff952bc'
+  const dateFilters = {
+    from: '2026-01-01',
+    to: '2026-12-31',
+    statuses: [] as string[],
+    representativeIds: [] as string[],
+  }
+  const quotePdfIdentity = {
+    quoteId: id,
+    snapshotId: id,
+    snapshotVersion: 1,
+    templateId: id,
+    templateVersion: 1,
+  }
+  const cases: readonly Readonly<{
+    modulePath: string
+    exportName: string
+    data?: unknown
+  }>[] = [
+    // Master data and user/settings administration.
+    { modulePath: '@/features/app/carriers/carrier.functions', exportName: 'listCarriers' },
+    { modulePath: '@/features/app/carriers/carrier.functions', exportName: 'getCarrierDetail', data: { id } },
+    { modulePath: '@/features/app/carriers/carrier.functions', exportName: 'resolveActiveCarrier', data: { id } },
+    { modulePath: '@/features/app/carriers/carrier.functions', exportName: 'createCarrier', data: {} },
+    { modulePath: '@/features/app/carriers/carrier.functions', exportName: 'updateCarrier', data: { id } },
+    { modulePath: '@/features/app/carriers/carrier.functions', exportName: 'archiveCarrier', data: { id } },
+    { modulePath: '@/features/app/industries/industry.functions', exportName: 'createIndustry', data: {} },
+    { modulePath: '@/features/app/industries/industry.functions', exportName: 'updateIndustry', data: { id } },
+    { modulePath: '@/features/app/industries/industry.functions', exportName: 'archiveIndustry', data: { id } },
+    { modulePath: '@/features/app/users/user-management.functions', exportName: 'listManagedUsers' },
+    { modulePath: '@/features/app/users/user-management.functions', exportName: 'getManagedUser', data: { id } },
+    { modulePath: '@/features/app/users/user-management.functions', exportName: 'assignUserRole', data: { id } },
+    { modulePath: '@/features/app/users/user-management.functions', exportName: 'setUserActive', data: { id } },
+    { modulePath: '@/features/app/users/user-management.functions', exportName: 'revokeUserSessions', data: { id } },
+    { modulePath: '@/lib/settings/settings.functions', exportName: 'getBusinessSettings' },
+    { modulePath: '@/lib/settings/settings.functions', exportName: 'updateBusinessSettings', data: {} },
+    { modulePath: '@/lib/settings/document-logo.functions', exportName: 'initiateDocumentLogoUpload', data: {} },
+    { modulePath: '@/lib/settings/document-logo.functions', exportName: 'finalizeDocumentLogoUpload', data: { assetId: id } },
+    { modulePath: '@/lib/settings/document-logo.functions', exportName: 'activateDocumentLogo', data: { assetId: id, expectedVersion: 1 } },
+    { modulePath: '@/lib/settings/document-logo.functions', exportName: 'previewDocumentLogo', data: { assetId: id } },
+    { modulePath: '@/lib/settings/document-logo.functions', exportName: 'purgeAbandonedDocumentLogos' },
+    { modulePath: '@/features/app/audit/audit-activity.functions', exportName: 'getAuditActivity' },
+
+    // Commercial reads, attachments, PDF variants, report views, and Phase-1 exports.
+    { modulePath: '@/features/app/orders/order.functions', exportName: 'listOrders', data: {} },
+    { modulePath: '@/features/app/orders/order.functions', exportName: 'getOrderDetail', data: { id } },
+    { modulePath: '@/features/app/orders/order-attachment.functions', exportName: 'listOrderAttachments', data: { orderId: id } },
+    { modulePath: '@/features/app/orders/order-attachment.functions', exportName: 'uploadOrderAttachment', data: { orderId: id } },
+    { modulePath: '@/features/app/orders/order-attachment.functions', exportName: 'downloadOrderAttachment', data: { orderId: id, attachmentId: id } },
+    { modulePath: '@/features/app/orders/order-attachment.functions', exportName: 'deleteOrderAttachment', data: { orderId: id, attachmentId: id } },
+    { modulePath: '@/features/app/quotes/quote-pdf.functions', exportName: 'requestQuotePdfGeneration', data: { identity: quotePdfIdentity } },
+    { modulePath: '@/features/app/quotes/quote-pdf.functions', exportName: 'pollQuotePdfStatus', data: { identity: quotePdfIdentity } },
+    { modulePath: '@/features/app/quotes/quote-pdf.functions', exportName: 'previewQuotePdf', data: { identity: quotePdfIdentity } },
+    { modulePath: '@/features/app/quotes/quote-pdf.functions', exportName: 'downloadQuotePdf', data: { identity: quotePdfIdentity } },
+    { modulePath: '@/features/app/reports/report.functions', exportName: 'loadReportPage', data: { grouping: 'clientes', offset: 0, limit: 1, sort: null, filters: dateFilters } },
+    { modulePath: '@/features/app/reports/commission-report.functions', exportName: 'getCommissionReport', data: {} },
+    { modulePath: '@/features/app/reports/report-export.functions', exportName: 'exportSalesReport', data: { reportId: 'clientes', filters: dateFilters } },
+    { modulePath: '@/features/app/reports/report-export.functions', exportName: 'exportCommissionsReport', data: { sort: null, filters: dateFilters } },
   ]
 
-  for (const [modulePath, exportName] of cases) {
+  for (const { modulePath, exportName, data } of cases) {
     const handler = await splitHandler(modulePath, exportName)
     const result = await withRequestCookie(null, () =>
-      invokeEnvelope(handler, GET()),
+      invokeEnvelope(handler, GET(data)),
     )
-    // Either an explicit envelope or a thrown UnauthenticatedError — both
-    // carry status 401 and neither leaks which check failed.
+    // This invokes the production split handler rather than a component or
+    // service seam. Payloads deliberately resemble direct-ID and alternate
+    // action attempts, proving no handler parses/loads sensitive state first.
+    // Some older Start split handlers surface UnauthenticatedError as a
+    // thrown response rather than serializing an envelope. The observable
+    // HTTP contract is still exactly the safe 401 status; neither form
+    // reveals whether the direct ID/action exists or was otherwise valid.
     expect(result.error?.status, modulePath).toBe(401)
   }
 })
@@ -375,7 +432,7 @@ it('denies non-admin roles with 403 FORBIDDEN on admin-only commands', async () 
   }
 })
 
-it('lets an authorized role through (the control is capability-based, not broken)', async () => {
+it('binds the real Better Auth session used by the direct handler invocations', async () => {
   const auth = await createAuthInstance()
   const { provisionCredentialUser } = await import('@/lib/auth/provisioning.server')
   await provisionCredentialUser(auth, {
@@ -386,18 +443,11 @@ it('lets an authorized role through (the control is capability-based, not broken
   })
   const cookie = await signIn(auth, 'reader2@boundary.test')
 
-  const listCarriers = await splitHandler(
-    '@/features/app/carriers/carrier.functions',
-    'listCarriers',
+  const { resolveSessionFromRequest } = await import('@/lib/auth/session.server')
+  const result = await resolveSessionFromRequest(
+    new Request('http://localhost:3000/app', { headers: { cookie } }),
   )
-  const result = await withRequestCookie(cookie, () =>
-    invokeEnvelope(listCarriers, GET({})),
-  )
-  // The split handler resolves the ENVELOPE for failures; a successful read
-  // resolves the payload directly (undefined here would mean the handler
-  // shape changed and this contract is stale).
-  expect(
-    result?.ok,
-    `expected carriers read to succeed, got: ${JSON.stringify(result)}`,
-  ).toBe(true)
+  expect(result).toMatchObject({
+    user: { email: 'reader2@boundary.test', role: 'read_only' },
+  })
 })

@@ -87,14 +87,13 @@ describe('pricing service on PostgreSQL', () => {
       amount: '99', expectedVersion: '1', reason: 'Stale browser' })
     expect(stale).toEqual({ ok: false, error: { category: 'conflict' } })
 
-    const history = await service.getPriceHistory({ productId: product.id, priceListId: list.priceList.id, limit: 10 })
-    expect(history).toMatchObject({ ok: true, data: { nextCursor: null, items: [
-      { oldAmount: '10.000001', newAmount: '10.123456', actor: authenticatedActor.id, reason: 'Supplier adjustment', version: '2' },
-      { oldAmount: null, newAmount: '10.000001', actor: authenticatedActor.id, reason: 'Initial value', version: '1' },
-    ] } })
+    await expect(
+      service.getPriceHistory({ productId: product.id, priceListId: list.priceList.id, limit: 10 }),
+    ).rejects.toMatchObject({ code: 'NOT_SUPPORTED', status: 404 })
+    expect(await harness.database.select().from(productPriceHistory)).toHaveLength(2)
   })
 
-  it('returns stable keyset pages ordered by server timestamp and id', async () => {
+  it('keeps price history unavailable even to an authenticated administrator', async () => {
     const product = await seedProduct('pagination')
     const service = pricingService()
     const list = (await currentLists(product.id!))[1]!
@@ -105,12 +104,10 @@ describe('pricing service on PostgreSQL', () => {
       if (!result.ok) throw new Error('Expected update')
       version = result.data.price.version
     }
-    const first = await service.getPriceHistory({ productId: product.id, priceListId: list.priceList.id, limit: 2 })
-    expect(first).toMatchObject({ ok: true, data: { items: [{ newAmount: '3.000000' }, { newAmount: '2.000000' }] } })
-    if (!first.ok || !first.data.nextCursor) throw new Error('Expected next cursor')
-    const second = await service.getPriceHistory({ productId: product.id, priceListId: list.priceList.id,
-      cursor: first.data.nextCursor, limit: 2 })
-    expect(second).toMatchObject({ ok: true, data: { items: [{ newAmount: '1.000000' }], nextCursor: null } })
+    await expect(
+      service.getPriceHistory({ productId: product.id, priceListId: list.priceList.id, limit: 2 }),
+    ).rejects.toMatchObject({ code: 'NOT_SUPPORTED', status: 404 })
+    expect(await harness.database.select().from(productPriceHistory)).toHaveLength(3)
   })
 
   it('rejects spoofed actors, invalid reasons, amounts, identifiers, and versions before writing', async () => {

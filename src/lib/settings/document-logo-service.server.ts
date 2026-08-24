@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import sharp from 'sharp'
 import type { Metadata as SharpMetadata } from 'sharp'
+import { hasCapability, type Role } from '@/lib/auth/capabilities'
 import {
   DOCUMENT_LOGO_ALLOWED_MIME_TYPES,
   DOCUMENT_LOGO_IMAGE_LIMITS,
@@ -32,7 +33,7 @@ import {
 
 export type DocumentLogoActor = Readonly<{
   id: string
-  role: 'admin' | 'representative' | 'read_only'
+  role: Role
 }>
 
 export class DocumentLogoApiError extends Error {
@@ -168,7 +169,9 @@ function requireAdmin(
   return (async () => {
     const actor = await authenticate(actorInput)
     if (!actor) throw new DocumentLogoApiError('UNAUTHENTICATED')
-    if (actor.role !== 'admin') throw new DocumentLogoApiError('FORBIDDEN')
+    if (!hasCapability(actor.role, 'settings.update')) {
+      throw new DocumentLogoApiError('FORBIDDEN')
+    }
     return actor
   })()
 }

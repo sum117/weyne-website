@@ -17,6 +17,8 @@ const readActions = [
   'product.read',
   'product.search',
   'price.read',
+  'carrier.read',
+  'carrier.search',
 ] as const satisfies readonly CatalogAction[]
 
 const historyActions = ['price.history.read'] as const satisfies readonly CatalogAction[]
@@ -28,7 +30,13 @@ const writeActions = [
   'product.update',
   'product.archive',
   'price.update',
+  'carrier.create',
+  'carrier.update',
+  'carrier.archive',
+  'product.files.manage',
 ] as const satisfies readonly CatalogAction[]
+
+const fileReadActions = ['product.files.read'] as const satisfies readonly CatalogAction[]
 
 describe('catalog authorization policy', () => {
   it.each(readActions)('allows every existing role to perform %s', (action) => {
@@ -37,10 +45,16 @@ describe('catalog authorization policy', () => {
     expect(authorizeCatalogAction(actors.readOnly, action)).toBe('allow')
   })
 
-  it.each(historyActions)('allows commercial roles but denies read-only users for %s', (action) => {
+  it.each(fileReadActions)('allows file reads only to roles with product.view_files for %s', (action) => {
     expect(authorizeCatalogAction(actors.admin, action)).toBe('allow')
     expect(authorizeCatalogAction(actors.representative, action)).toBe('allow')
     expect(authorizeCatalogAction(actors.readOnly, action)).toBe('forbidden')
+  })
+
+  it.each(historyActions)('marks %s as unavailable for every role in Phase 1', (action) => {
+    expect(authorizeCatalogAction(actors.admin, action)).toBe('not_supported')
+    expect(authorizeCatalogAction(actors.representative, action)).toBe('not_supported')
+    expect(authorizeCatalogAction(actors.readOnly, action)).toBe('not_supported')
   })
 
   it.each(writeActions)('allows only administrators to perform %s', (action) => {

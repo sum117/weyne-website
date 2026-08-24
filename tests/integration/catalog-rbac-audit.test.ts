@@ -100,7 +100,7 @@ describe('catalog RBAC and audit on PostgreSQL', () => {
     await expect(catalog().list({ filters: { status: 'active' } })).resolves.toMatchObject({ ok: true })
     await expect(pricing().getCurrentPrices({ productId: created.id })).resolves.toMatchObject({ ok: true })
     await expect(pricing().getPriceHistory({ productId: created.id, priceListId: created.prices[0]!.priceListId }))
-      .rejects.toMatchObject({ code: 'FORBIDDEN', status: 403 })
+      .rejects.toMatchObject({ code: 'NOT_SUPPORTED', status: 404 })
   })
 
   it('audits product create, update, and archive with safe before and after details', async () => {

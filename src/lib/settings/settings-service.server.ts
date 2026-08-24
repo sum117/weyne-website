@@ -4,7 +4,7 @@ import {
   type BusinessSettings,
   type SettingsRecord,
 } from '@/domain/settings/business-settings'
-import { authorize } from '@/lib/auth/capabilities'
+import { hasCapability, type Capability, type Role } from '@/lib/auth/capabilities'
 import { failure, success, type Result } from '@/lib/domain/result'
 import { parseRequest } from '@/lib/server/request.schema'
 import type {
@@ -28,7 +28,7 @@ import type {
 
 export type SettingsActor = Readonly<{
   id: string
-  role: 'admin' | 'representative' | 'read_only'
+  role: Role
 }>
 
 export type SettingsServiceError =
@@ -101,10 +101,9 @@ export function createSettingsService(
 
   function authorizeActor(
     actor: SettingsActor | null,
-  ): actor is SettingsActor & { role: 'admin' } {
-    return (
-      actor !== null && authorize(actor.role, 'settings.read') === 'allow'
-    )
+    capability: Capability,
+  ): boolean {
+    return actor !== null && hasCapability(actor.role, capability)
   }
 
   return Object.freeze({
@@ -118,7 +117,7 @@ export function createSettingsService(
         })
         return failure({ category: 'unauthenticated' as const })
       }
-      if (!authorizeActor(actor)) {
+      if (!authorizeActor(actor, 'settings.read')) {
         await record({
           action: 'settings.denied',
           actorId: actor.id,
@@ -153,7 +152,7 @@ export function createSettingsService(
         })
         return failure({ category: 'unauthenticated' as const })
       }
-      if (!authorizeActor(actor)) {
+      if (!authorizeActor(actor, 'settings.update')) {
         await record({
           action: 'settings.denied',
           actorId: actor.id,
