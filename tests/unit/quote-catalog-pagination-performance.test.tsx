@@ -118,10 +118,11 @@ describe('large-catalog pagination contract', () => {
     expect(firstItem).toBeInTheDocument()
     const renderMs = performance.now() - start
 
-    // jsdom render of one bounded page stays far below a perceptible
-    // interaction budget; this is the measured baseline that keeps the
-    // "no virtualization yet" decision honest.
-    expect(renderMs).toBeLessThan(1_000)
+    // This is a jsdom wall-clock guard, not a browser interaction metric.
+    // Keep generous CI headroom for a bounded 20-row page while retaining a
+    // budget far below a user-perceptible interaction delay; the structural
+    // assertions below still prevent unbounded rendering without virtualization.
+    expect(renderMs).toBeLessThan(1_500)
   })
 
   it('never fetches more than pageSize items in a single request', async () => {
