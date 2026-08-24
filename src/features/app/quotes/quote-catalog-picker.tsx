@@ -277,14 +277,14 @@ export function QuoteCatalogPicker({
                 value={product.id}
                 disabled={unavailable}
                 onSelect={() => selectProduct(product)}
-                className="min-h-16 items-start py-2"
+                className="group min-h-16 items-start py-2"
               >
                 <ProductThumbnail product={product} />
                 <span className="min-w-0 flex-1">
                   <span className="block font-medium break-words">
                     {product.description}
                   </span>
-                  <span className="block text-xs break-words text-muted-foreground">
+                  <span className="block text-xs break-words text-muted-foreground group-data-[selected=true]:text-accent-foreground">
                     {product.internalCode} · {product.industryName}
                     {product.brand ? ` · ${product.brand}` : ''}
                   </span>

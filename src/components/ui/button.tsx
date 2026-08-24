@@ -16,7 +16,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          'rounded-full bg-blue text-white shadow-[0_12px_26px_-14px_rgb(3_79_131/0.75)] hover:-translate-y-px hover:bg-baltic hover:shadow-[0_16px_30px_-14px_rgb(6_156_255/0.6)]',
+          'rounded-full bg-blue text-white shadow-[0_12px_26px_-14px_rgb(3_79_131/0.75)] hover:-translate-y-px hover:bg-navy hover:shadow-[0_16px_30px_-14px_rgb(6_156_255/0.6)] disabled:bg-navy/75 disabled:opacity-100 disabled:shadow-none',
         inverse:
           'rounded-full bg-white text-navy shadow-[0_20px_40px_-18px_rgb(0_0_0/0.5)] hover:-translate-y-0.5 hover:bg-sand hover:shadow-[0_26px_48px_-18px_rgb(238_202_160/0.5)]',
         sand: 'rounded-xl bg-sand text-[#3a2a12] hover:-translate-y-0.5 hover:bg-white',
