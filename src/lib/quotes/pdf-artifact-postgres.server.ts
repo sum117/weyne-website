@@ -27,10 +27,10 @@ type ArtifactRow = {
   outputChecksum: string | null
   pageCount: number | null
   attemptCount: number
-  createdAt: Date
-  generationStartedAt: Date
-  completedAt: Date | null
-  failedAt: Date | null
+  createdAt: Date | string
+  generationStartedAt: Date | string
+  completedAt: Date | string | null
+  failedAt: Date | string | null
   errorCode: string | null
   errorMessage: string | null
   errorDetails: Record<string, number | string> | null
@@ -55,14 +55,18 @@ function toArtifact(row: ArtifactRow): QuotePdfArtifact {
     outputChecksum: row.outputChecksum,
     pageCount: row.pageCount,
     attemptCount: row.attemptCount,
-    createdAt: row.createdAt,
-    generationStartedAt: row.generationStartedAt,
-    completedAt: row.completedAt,
-    failedAt: row.failedAt,
+    createdAt: asDate(row.createdAt),
+    generationStartedAt: asDate(row.generationStartedAt),
+    completedAt: row.completedAt === null ? null : asDate(row.completedAt),
+    failedAt: row.failedAt === null ? null : asDate(row.failedAt),
     errorCode: (row.errorCode ?? null) as QuotePdfArtifact['errorCode'],
     errorMessage: row.errorMessage,
     errorDetails: row.errorDetails,
   }
+}
+
+function asDate(value: Date | string): Date {
+  return value instanceof Date ? value : new Date(value)
 }
 
 function isStaleClaimError(error: unknown): boolean {
@@ -92,7 +96,7 @@ export function createPostgresQuotePdfArtifactRepository(options: {
     await sql.unsafe(`SET search_path TO ${quotedSchema}, public`)
   }
 
-  function mapClaim(rows: Array<{ artifact: ArtifactRow; claimed: boolean }>) {
+  function mapClaim(rows: Array<ArtifactRow & { claimed: boolean }>) {
     const row = rows[0]
     if (!row) {
       throw new QuotePdfGenerationError(
@@ -100,15 +104,38 @@ export function createPostgresQuotePdfArtifactRepository(options: {
         'PDF artifact claim returned no row',
       )
     }
-    return { claimed: row.claimed, artifact: toArtifact(row.artifact) }
+    return { claimed: row.claimed, artifact: toArtifact(row) }
   }
 
   return {
     async claim(identity, _now, staleBefore) {
       await useSchema()
       try {
-        const rows = await sql<Array<{ artifact: ArtifactRow; claimed: boolean }>>`
-          SELECT (artifact).*, claimed
+        const rows = await sql<Array<ArtifactRow & { claimed: boolean }>>`
+          SELECT
+            (artifact).id::text AS id,
+            (artifact).quote_id::text AS "quoteId",
+            (artifact).snapshot_id::text AS "snapshotId",
+            (artifact).snapshot_version AS "snapshotVersion",
+            (artifact).template_id::text AS "templateId",
+            (artifact).template_version AS "templateVersion",
+            (artifact).template_variant AS "templateVariant",
+            (artifact).source_checksum AS "sourceChecksum",
+            (artifact).status AS status,
+            (artifact).object_key AS "objectKey",
+            (artifact).mime_type AS "mimeType",
+            (artifact).size_bytes::text AS "sizeBytes",
+            (artifact).output_checksum AS "outputChecksum",
+            (artifact).page_count AS "pageCount",
+            (artifact).attempt_count AS "attemptCount",
+            (artifact).created_at AS "createdAt",
+            (artifact).generation_started_at AS "generationStartedAt",
+            (artifact).completed_at AS "completedAt",
+            (artifact).failed_at AS "failedAt",
+            (artifact).error_code AS "errorCode",
+            (artifact).error_message AS "errorMessage",
+            (artifact).error_details AS "errorDetails",
+            claimed
           FROM claim_quote_pdf_artifact(
             ${identity.quoteId}::uuid,
             ${identity.snapshotId}::uuid,
@@ -119,7 +146,7 @@ export function createPostgresQuotePdfArtifactRepository(options: {
             ${identity.snapshotSourceChecksum},
             ${staleBefore.toISOString()},
             ${identity.sourceChecksum}
-          ) AS claim(artifact quote_pdf_artifacts, claimed boolean)
+          ) AS claim
         `
         return mapClaim(rows)
       } catch (error) {
@@ -143,7 +170,30 @@ export function createPostgresQuotePdfArtifactRepository(options: {
       await useSchema()
       try {
         const rows = await sql<ArtifactRow[]>`
-          SELECT * FROM complete_quote_pdf_artifact(
+          SELECT
+            id::text AS id,
+            quote_id::text AS "quoteId",
+            snapshot_id::text AS "snapshotId",
+            snapshot_version AS "snapshotVersion",
+            template_id::text AS "templateId",
+            template_version AS "templateVersion",
+            template_variant AS "templateVariant",
+            source_checksum AS "sourceChecksum",
+            status,
+            object_key AS "objectKey",
+            mime_type AS "mimeType",
+            size_bytes::text AS "sizeBytes",
+            output_checksum AS "outputChecksum",
+            page_count AS "pageCount",
+            attempt_count AS "attemptCount",
+            created_at AS "createdAt",
+            generation_started_at AS "generationStartedAt",
+            completed_at AS "completedAt",
+            failed_at AS "failedAt",
+            error_code AS "errorCode",
+            error_message AS "errorMessage",
+            error_details AS "errorDetails"
+          FROM complete_quote_pdf_artifact(
             ${artifactId}::uuid,
             ${expectedAttemptCount},
             ${completion.objectKey},
@@ -168,7 +218,30 @@ export function createPostgresQuotePdfArtifactRepository(options: {
       await useSchema()
       try {
         const rows = await sql<ArtifactRow[]>`
-          SELECT * FROM fail_quote_pdf_artifact(
+          SELECT
+            id::text AS id,
+            quote_id::text AS "quoteId",
+            snapshot_id::text AS "snapshotId",
+            snapshot_version AS "snapshotVersion",
+            template_id::text AS "templateId",
+            template_version AS "templateVersion",
+            template_variant AS "templateVariant",
+            source_checksum AS "sourceChecksum",
+            status,
+            object_key AS "objectKey",
+            mime_type AS "mimeType",
+            size_bytes::text AS "sizeBytes",
+            output_checksum AS "outputChecksum",
+            page_count AS "pageCount",
+            attempt_count AS "attemptCount",
+            created_at AS "createdAt",
+            generation_started_at AS "generationStartedAt",
+            completed_at AS "completedAt",
+            failed_at AS "failedAt",
+            error_code AS "errorCode",
+            error_message AS "errorMessage",
+            error_details AS "errorDetails"
+          FROM fail_quote_pdf_artifact(
             ${artifactId}::uuid,
             ${expectedAttemptCount},
             ${failure.code},
