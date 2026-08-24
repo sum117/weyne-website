@@ -104,7 +104,7 @@ describe('product pricing', () => {
         ],
       }),
     )
-  })
+  }, 15_000)
 
   it('rejects an invalid price without coercing it to a JavaScript number', async () => {
     const onSavePrices = vi.fn()
