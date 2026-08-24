@@ -267,6 +267,11 @@ export function QuoteLineItemEditor({
 }: QuoteLineItemEditorProps) {
   const [lines, setLines] = React.useState<DraftLine[]>(() => model.lines.map(toDraftLine))
   const removedLineIds = React.useRef(new Set<string>())
+  const editorRef = React.useRef<HTMLElement>(null)
+  const [pendingMoveFocus, setPendingMoveFocus] = React.useState<{
+    lineId: string
+    direction: -1 | 1
+  } | null>(null)
   const [errors, setErrors] = React.useState<ValidationErrors>({})
   const [announcement, setAnnouncement] = React.useState('')
   const [submitState, setSubmitState] = React.useState<
@@ -297,6 +302,16 @@ export function QuoteLineItemEditor({
       return added.length === 0 ? retained : [...retained, ...added]
     })
   }, [model.lines])
+
+  React.useLayoutEffect(() => {
+    if (!pendingMoveFocus) return
+    editorRef.current
+      ?.querySelector<HTMLButtonElement>(
+        `[data-quote-move-control="${pendingMoveFocus.lineId}:${pendingMoveFocus.direction}"]`,
+      )
+      ?.focus()
+    setPendingMoveFocus(null)
+  }, [lines, pendingMoveFocus])
 
   const emitDraft = React.useCallback(
     (nextLines: readonly DraftLine[]) => {
@@ -339,17 +354,18 @@ export function QuoteLineItemEditor({
 
   const move = (index: number, direction: -1 | 1) => {
     const target = index + direction
-    if (target < 0 || target >= lines.length) return
-    setLines((current) => {
-      const next = [...current]
-      const [line] = next.splice(index, 1)
-      if (!line) return current
-      next.splice(target, 0, line)
-      emitDraft(next)
-      setAnnouncement(
-        `${line.source.saved.descriptionSnapshot} movido para a posição ${target + 1}.`,
-      )
-      return next
+    const line = lines[index]
+    if (!line || target < 0 || target >= lines.length) return
+
+    const next = [...lines]
+    next.splice(index, 1)
+    next.splice(target, 0, line)
+    setLines(next)
+    emitDraft(next)
+    setAnnouncement(`${line.source.saved.descriptionSnapshot} movido para a posição ${target + 1}.`)
+    setPendingMoveFocus({
+      lineId: line.lineId,
+      direction: target === next.length - 1 ? -1 : 1,
     })
   }
 
@@ -415,7 +431,7 @@ export function QuoteLineItemEditor({
   }
 
   return (
-    <section className="space-y-6" aria-label="Editor de itens do orçamento">
+    <section ref={editorRef} className="space-y-6" aria-label="Editor de itens do orçamento">
       <div role="status" aria-live="polite" className="sr-only">
         {announcement}
       </div>
@@ -545,6 +561,7 @@ export function QuoteLineItemEditor({
                         size="icon"
                         aria-label={`Mover ${saved.descriptionSnapshot} para cima`}
                         disabled={index === 0}
+                        data-quote-move-control={`${line.lineId}:-1`}
                         onClick={() => move(index, -1)}
                       >
                         <ArrowUp aria-hidden="true" weight="light" />
@@ -555,6 +572,7 @@ export function QuoteLineItemEditor({
                         size="icon"
                         aria-label={`Mover ${saved.descriptionSnapshot} para baixo`}
                         disabled={index === lines.length - 1}
+                        data-quote-move-control={`${line.lineId}:1`}
                         onClick={() => move(index, 1)}
                       >
                         <ArrowDown aria-hidden="true" weight="light" />

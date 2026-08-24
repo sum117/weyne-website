@@ -263,6 +263,7 @@ interface WorkflowControls {
     identity: Record<string, unknown>,
     variant: string,
   ): Promise<Record<string, unknown>>
+  pdfStatus(identity: Record<string, unknown>): Promise<Record<string, unknown>>
   deliverPdf(
     identity: Record<string, unknown>,
     actAs?: Actor,
@@ -376,6 +377,12 @@ function WorkspaceApp() {
         return api('/api/quote/pdf/generate', {
           identity,
           variant,
+          actor: { ...currentActor, tenantId: TENANT_ID },
+        })
+      },
+      async pdfStatus(identity) {
+        return api('/api/quote/pdf/status', {
+          identity,
           actor: { ...currentActor, tenantId: TENANT_ID },
         })
       },

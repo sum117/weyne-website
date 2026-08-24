@@ -438,17 +438,12 @@ test.describe('role authorization', () => {
     const statusAsReadOnly = await page.evaluate(async (identityInput) => {
       window.__workspace.setActor('read_only')
       try {
-        return {
-          kind: 'status-ok',
-          view: await window.__workspace.generatePdf(identityInput, 'summary').catch(
-            (error: Error) => ({ error: error.message }),
-          ),
-        }
+        return await window.__workspace.pdfStatus(identityInput)
       } finally {
         window.__workspace.setActor('owner')
       }
-    }, { identity })
-    void statusAsReadOnly
+    }, identity)
+    expect(statusAsReadOnly.kind).toBe('completed')
 
     const deniedDelivery = await page.evaluate(
       (identityInput) =>
@@ -681,18 +676,22 @@ test.describe('responsive accessibility', () => {
     await openWorkspace(page)
     await applyWorkflowOrder(page)
 
-    const moveDown = page.getByRole('button', {
-      name: new RegExp(`Mover ${expectations.PRODUCTS.b.description} para baixo`),
-    })
-    await moveDown.focus()
-    await page.keyboard.press('Enter')
-    const liveRegion = page.getByRole('status').filter({
-      hasText: `${expectations.PRODUCTS.b.description} movido para a posição`,
-    })
-    await expect(liveRegion).toBeVisible()
+    // Catalog responses do not promise an order, so select any enabled move
+    // control and retain its accessible product name for the assertions.
+    const moveDown = page.locator('button[aria-label^="Mover "][aria-label$=" para baixo"]:not(:disabled)').first()
+    const moveLabel = await moveDown.getAttribute('aria-label')
+    const description = moveLabel?.match(/^Mover (.+) para baixo$/)?.[1]
+    expect(description).toBeTruthy()
+    const movedDown = page.getByRole('button', { name: `Mover ${description} para baixo` })
 
-    // Focus stays inside the application after activation (no body resets).
-    await expect(moveDown).toBeFocused()
+    await movedDown.focus()
+    await movedDown.press('Enter')
+    await expect(page.getByRole('status')).toContainText(`${description} movido para a posição`)
+
+    // Focus remains on a usable ordering control. Moving the last eligible
+    // item down disables that control, so the editor moves focus to "up".
+    const moveUp = page.getByRole('button', { name: `Mover ${description} para cima` })
+    await expect(await movedDown.isDisabled() ? moveUp : movedDown).toBeFocused()
 
     const removeButton = page.getByRole('button', {
       name: new RegExp(`Remover ${expectations.PRODUCTS.c.description}`),

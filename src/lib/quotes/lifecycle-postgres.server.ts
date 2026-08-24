@@ -298,7 +298,7 @@ export function createPostgresQuoteLifecycleStore(options: {
                 ${command.idempotencyKey},
                 ${command.result.quote.id},
                 ${command.payloadHash},
-                ${JSON.stringify(resultJson)}::jsonb
+                ${JSON.stringify(resultJson)}::text::jsonb
               )
             `
           },
