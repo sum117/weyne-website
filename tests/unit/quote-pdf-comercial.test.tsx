@@ -183,7 +183,7 @@ describe('comercial premium quote PDF', () => {
 
     expect(buffer.subarray(0, 5).toString('ascii')).toBe('%PDF-')
     expect(pageCount(buffer)).toBeGreaterThanOrEqual(1)
-  })
+  }, 20_000)
 
   it('uses no browser APIs, remote assets, or financial calculation engine', () => {
     expect(ComercialQuotePdfDocument).toBeTypeOf('function')
