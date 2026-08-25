@@ -23,14 +23,14 @@ type QuoteRow = {
   readyToSend: boolean
   customerSnapshot: Readonly<Record<string, unknown>>
   commercialSnapshot: Readonly<Record<string, unknown>>
-  sentAt: Date | null
-  approvedAt: Date | null
+  sentAt: Date | string | null
+  approvedAt: Date | string | null
   approvedBy: string | null
-  rejectedAt: Date | null
+  rejectedAt: Date | string | null
   rejectedBy: string | null
   rejectedReason: string | null
-  expiredAt: Date | null
-  cancelledAt: Date | null
+  expiredAt: Date | string | null
+  cancelledAt: Date | string | null
   cancelledBy: string | null
   cancelledReason: string | null
 }
@@ -40,7 +40,7 @@ type HistoryRow = {
   quoteId: string
   actorId: string
   actorRole: QuoteHistoryEvent['actorRole']
-  occurredAt: Date
+  occurredAt: Date | string
   fromStatus: QuoteStatus
   toStatus: QuoteStatus
   reason: string | null
@@ -64,6 +64,29 @@ type CommandRow = {
   idempotencyKey: string
   payloadHash: string
   result: SerializedTransitionResult
+}
+
+function toDate(value: Date | string): Date {
+  return value instanceof Date ? value : new Date(value)
+}
+
+function toSqlTimestamp(value: Date | null): string | null {
+  return value?.toISOString() ?? null
+}
+
+function toQuoteRecord(row: QuoteRow): QuoteLifecycleRecord {
+  return {
+    ...row,
+    sentAt: row.sentAt === null ? null : toDate(row.sentAt),
+    approvedAt: row.approvedAt === null ? null : toDate(row.approvedAt),
+    rejectedAt: row.rejectedAt === null ? null : toDate(row.rejectedAt),
+    expiredAt: row.expiredAt === null ? null : toDate(row.expiredAt),
+    cancelledAt: row.cancelledAt === null ? null : toDate(row.cancelledAt),
+  }
+}
+
+function toHistoryEvent(row: HistoryRow): QuoteHistoryEvent {
+  return { ...row, occurredAt: toDate(row.occurredAt) }
 }
 
 function serializeResult(result: QuoteTransitionResult): SerializedTransitionResult {
@@ -152,15 +175,15 @@ export function createPostgresQuoteLifecycleStore(options: {
             `SELECT ${quoteColumns} FROM quotes WHERE id = $1 FOR UPDATE`,
             [quoteId],
           )
-          return rows[0] ?? null
+          return rows[0] ? toQuoteRecord(rows[0]) : null
         }
 
         const transaction: QuoteLifecycleTransaction = {
           async now() {
-            const rows = await tx<{ value: Date }[]>`
+            const rows = await tx<{ value: Date | string }[]>`
               SELECT date_trunc('milliseconds', clock_timestamp()) AS value
             `
-            return rows[0]!.value
+            return toDate(rows[0]!.value)
           },
           async businessDate() {
             const rows = await tx<{ value: string }[]>`
@@ -222,14 +245,14 @@ export function createPostgresQuoteLifecycleStore(options: {
                 updated.status,
                 updated.revision,
                 updated.readyToSend,
-                updated.sentAt,
-                updated.approvedAt,
+                toSqlTimestamp(updated.sentAt),
+                toSqlTimestamp(updated.approvedAt),
                 updated.approvedBy,
-                updated.rejectedAt,
+                toSqlTimestamp(updated.rejectedAt),
                 updated.rejectedBy,
                 updated.rejectedReason,
-                updated.expiredAt,
-                updated.cancelledAt,
+                toSqlTimestamp(updated.expiredAt),
+                toSqlTimestamp(updated.cancelledAt),
                 updated.cancelledBy,
                 updated.cancelledReason,
                 quoteId,
@@ -238,7 +261,7 @@ export function createPostgresQuoteLifecycleStore(options: {
             )
             const saved = rows[0]
             if (!saved) throw new QuoteLifecycleError('CONCURRENT_MODIFICATION')
-            return saved
+            return toQuoteRecord(saved)
           },
           async appendHistory(event) {
             const rows = await tx<HistoryRow[]>`
@@ -262,7 +285,7 @@ export function createPostgresQuoteLifecycleStore(options: {
                 command_type AS command,
                 idempotency_key AS "idempotencyKey"
             `
-            return rows[0]!
+            return toHistoryEvent(rows[0]!)
           },
           async saveCommand(command: StoredQuoteLifecycleCommand) {
             const result = serializeResult(command.result)
@@ -275,7 +298,7 @@ export function createPostgresQuoteLifecycleStore(options: {
                 ${command.idempotencyKey},
                 ${command.result.quote.id},
                 ${command.payloadHash},
-                ${tx.json(resultJson)}
+                ${JSON.stringify(resultJson)}::text::jsonb
               )
             `
           },
