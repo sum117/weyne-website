@@ -14,6 +14,7 @@ import {
   formatCnpj,
   formatPhone,
 } from '@/domain/primitives/brazilian'
+import { formatCurrency } from '@/lib/intl/format'
 
 export interface ClientAddress {
   street: string
@@ -72,11 +73,6 @@ export interface ClientDetailProps {
   onArchive?: (client: ClientDetailRecord) => Promise<ArchiveClientResult>
   onArchived?: (client: ClientDetailRecord) => void
 }
-
-const currencyFormatter = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL',
-})
 
 const archiveErrorMessages: Record<
   Exclude<ArchiveClientResult, { ok: true }>['code'],
@@ -324,7 +320,7 @@ export function ClientDetail({
                 label="Limite de crédito"
                 value={
                   client.creditLimit
-                    ? currencyFormatter.format(Number(client.creditLimit))
+                    ? formatCurrency(Number(client.creditLimit))
                     : null
                 }
               />

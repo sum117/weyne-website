@@ -21,6 +21,7 @@ import {
   type AuditActivityItem,
   type AuditSummaryValue,
 } from './audit-activity.functions'
+import { AUDIT_ACTIVITY_ERROR_MESSAGES } from './audit-activity-error-messages'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -694,7 +695,7 @@ export function AuditActivityViewer({
         ) : state === 'invalid' ? null : state === 'error' ? (
           <ErrorPanel
             message={
-              serverError?.message ??
+              (serverError ? AUDIT_ACTIVITY_ERROR_MESSAGES[serverError.code] : undefined) ??
               'Não foi possível carregar a atividade de auditoria.'
             }
             onRetry={() => void query.refetch()}

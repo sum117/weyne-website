@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { formatDate } from '@/lib/intl/format'
 import {
   deleteOrderAttachment,
   downloadOrderAttachment,
@@ -75,11 +76,11 @@ function formatBytes(sizeBytes: number): string {
 function formatTimestamp(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('pt-BR', {
+  return formatDate(date, {
     dateStyle: 'short',
     timeStyle: 'short',
     timeZone: 'UTC',
-  }).format(date)
+  })
 }
 
 function isAttachmentFile(file: File): file is File {

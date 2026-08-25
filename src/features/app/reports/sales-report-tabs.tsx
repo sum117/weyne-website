@@ -16,6 +16,7 @@ import {
   type SalesReportPage,
   type SalesReportRow,
 } from './report-page'
+import { APP_LOCALE, formatCurrency } from '@/lib/intl/format'
 
 /**
  * Sales report tab tables (clientes / produtos / industrias). Data comes from
@@ -38,25 +39,15 @@ const TAB_DESCRIPTIONS = {
   comissoes: '',
 } as const
 
-const currencyFormatters = new Map<string, Intl.NumberFormat>()
-
 function formatMoney(currencyCode: string, value: string): string {
-  let formatter = currencyFormatters.get(currencyCode)
-  if (!formatter) {
-    formatter = new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: currencyCode,
-    })
-    currencyFormatters.set(currencyCode, formatter)
-  }
   const amount = Number(value)
-  return formatter.format(Number.isFinite(amount) ? amount : 0)
+  return formatCurrency(Number.isFinite(amount) ? amount : 0, currencyCode)
 }
 
 function formatQuantity(value: string): string {
   const amount = Number(value)
   return Number.isFinite(amount)
-    ? new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 6 }).format(amount)
+    ? amount.toLocaleString(APP_LOCALE, { maximumFractionDigits: 6 })
     : value
 }
 

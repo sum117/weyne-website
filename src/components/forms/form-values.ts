@@ -5,6 +5,10 @@ import {
   formatToCPFOrCNPJ,
   formatToPhone,
 } from 'brazilian-values'
+import {
+  formatCurrency as formatLocalizedCurrency,
+  formatPercent as formatLocalizedPercent,
+} from '@/lib/intl/format'
 
 export type BrazilianMask = 'cep' | 'cnpj' | 'cpf' | 'cpfOrCnpj' | 'phone'
 
@@ -53,25 +57,17 @@ export function parseBrazilianDecimal(displayValue: string) {
   return Number.isFinite(value) ? value : null
 }
 
-const currencyFormatter = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL',
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
-
-const percentFormatter = new Intl.NumberFormat('pt-BR', {
-  style: 'percent',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 4,
-})
-
 export function formatCurrency(value: number | null) {
-  return value === null ? '' : currencyFormatter.format(value)
+  return value === null
+    ? ''
+    : formatLocalizedCurrency(value, 'BRL', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })
 }
 
 export function formatPercent(value: number | null) {
-  return value === null ? '' : percentFormatter.format(value / 100)
+  return value === null ? '' : formatLocalizedPercent(value)
 }
 
 export function formatEditableDecimal(value: number | null) {
