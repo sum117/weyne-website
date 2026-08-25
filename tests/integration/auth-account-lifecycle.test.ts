@@ -43,7 +43,10 @@ const CREDENTIALS = {
   role: 'representative',
 } as const
 
-const STRONG_PASSWORD = 'jXq7-vt2Lr9_Kd4Zs6Nb'
+// Long synthetic bootstrap password used only by this suite. Avoids every
+// FORBIDDEN_PASSWORD_FRAGMENTS term by design (no product/placeholder words),
+// while remaining obviously non-real for secret scanners.
+const STRONG_PASSWORD = 'orbital-tangerine-lantern-cactus-vault-2718'
 
 let adminClient: postgres.Sql
 let client: postgres.Sql

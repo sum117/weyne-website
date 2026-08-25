@@ -6,7 +6,8 @@ import {
   parseAuthConfig,
 } from '@/lib/auth/config.server'
 
-const STRONG_SECRET = 'z8Qk4tR2wLp9XvB6nHc3JdF7mYs5KgTa'
+// Obviously synthetic test value; the real secret must come from the env.
+const STRONG_SECRET = 'segredo-sintetico-de-teste-com-trinta-e-dois-chars'
 const PRODUCTION = { NODE_ENV: 'production' } as const
 
 describe('parseAuthConfig — development', () => {
