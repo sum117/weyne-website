@@ -68,7 +68,6 @@ export type AuditRequester = Readonly<{
 export type AuditActivityError = Readonly<{
   code: 'UNAUTHENTICATED' | 'FORBIDDEN' | 'INVALID_FILTER'
   status: 400 | 401 | 403
-  message: string
   issues?: readonly Readonly<{ path: readonly (string | number)[]; message: string }>[]
 }>
 
@@ -176,7 +175,6 @@ function invalidFilter(error: z.ZodError): { ok: false; error: AuditActivityErro
     error: {
       code: 'INVALID_FILTER',
       status: 400,
-      message: 'Os filtros de auditoria são inválidos.',
       issues: error.issues.map((issue) => ({
         path: issue.path.map((part) => (typeof part === 'symbol' ? String(part) : part)),
         message: issue.message,
@@ -195,7 +193,6 @@ export function createAuditActivityQuery(dependencies: QueryDependencies) {
         error: {
           code: 'UNAUTHENTICATED' as const,
           status: 401 as const,
-          message: 'Autenticação necessária.',
         },
       }
     }
@@ -205,7 +202,6 @@ export function createAuditActivityQuery(dependencies: QueryDependencies) {
         error: {
           code: 'FORBIDDEN' as const,
           status: 403 as const,
-          message: 'Apenas administradores podem consultar a auditoria.',
         },
       }
     }

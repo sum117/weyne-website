@@ -29,23 +29,29 @@ import type { SettingsRecord } from '@/domain/settings/business-settings'
  * rejects unknown keys, so counters cannot be smuggled in.
  */
 
+export type SettingsPublicErrorCode =
+  | 'VALIDATION_FAILED'
+  | 'UNAUTHENTICATED'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'CONFLICT'
+  | 'INTERNAL_ERROR'
+
 export type SettingsPublicError =
   | Readonly<{
       code: 'VALIDATION_FAILED'
       status: 400
-      message: 'Os dados informados são inválidos.'
       issues: readonly Readonly<{ path: readonly (string | number)[]; message: string }>[]
     }>
-  | Readonly<{ code: 'UNAUTHENTICATED'; status: 401; message: 'Autenticação necessária.' }>
-  | Readonly<{ code: 'FORBIDDEN'; status: 403; message: 'Você não tem permissão para realizar esta operação.' }>
-  | Readonly<{ code: 'NOT_FOUND'; status: 404; message: 'Configurações ainda não inicializadas.' }>
+  | Readonly<{ code: 'UNAUTHENTICATED'; status: 401 }>
+  | Readonly<{ code: 'FORBIDDEN'; status: 403 }>
+  | Readonly<{ code: 'NOT_FOUND'; status: 404 }>
   | Readonly<{
       code: 'CONFLICT'
       status: 409
-      message: 'As configurações foram alteradas por outra pessoa. Recarregue e tente novamente.'
       currentRecord: SettingsRecord | null
     }>
-  | Readonly<{ code: 'INTERNAL_ERROR'; status: 500; message: 'Não foi possível concluir a operação.' }>
+  | Readonly<{ code: 'INTERNAL_ERROR'; status: 500 }>
 
 export type SettingsReadResult = Result<SettingsRecord, SettingsPublicError>
 export type SettingsUpdateResult = Result<SettingsRecord, SettingsPublicError>
@@ -56,19 +62,14 @@ function toPublicError(error: SettingsServiceError): SettingsPublicError {
       return {
         code: 'VALIDATION_FAILED',
         status: 400,
-        message: 'Os dados informados são inválidos.',
         issues: error.issues.map(({ path, message }) => ({ path, message })),
       }
     case 'unauthenticated':
-      return { code: 'UNAUTHENTICATED', status: 401, message: 'Autenticação necessária.' }
+      return { code: 'UNAUTHENTICATED', status: 401 }
     case 'forbidden':
-      return {
-        code: 'FORBIDDEN',
-        status: 403,
-        message: 'Você não tem permissão para realizar esta operação.',
-      }
+      return { code: 'FORBIDDEN', status: 403 }
     case 'not-found':
-      return { code: 'NOT_FOUND', status: 404, message: 'Configurações ainda não inicializadas.' }
+      return { code: 'NOT_FOUND', status: 404 }
     case 'conflict':
       // The current valid record travels back so a client can rebase without
       // losing its own edits; it is the canonical record, safe to expose to an
@@ -76,11 +77,10 @@ function toPublicError(error: SettingsServiceError): SettingsPublicError {
       return {
         code: 'CONFLICT',
         status: 409,
-        message: 'As configurações foram alteradas por outra pessoa. Recarregue e tente novamente.',
         currentRecord: error.currentRecord,
       }
     case 'unexpected':
-      return { code: 'INTERNAL_ERROR', status: 500, message: 'Não foi possível concluir a operação.' }
+      return { code: 'INTERNAL_ERROR', status: 500 }
   }
 }
 
@@ -112,7 +112,6 @@ export function createSettingsOperations(dependencies: Readonly<{
         error: {
           code: 'INTERNAL_ERROR',
           status: 500,
-          message: 'Não foi possível concluir a operação.',
         },
       }
     }

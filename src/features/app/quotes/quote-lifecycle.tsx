@@ -4,6 +4,7 @@ import { ConfirmationDialog } from '@/components/patterns/confirmation-dialog'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatDate } from '@/lib/intl/format'
 import type {
   QuoteLifecycleStatus,
   QuoteLifecycleSummary,
@@ -189,11 +190,11 @@ function actorLabel(actor: QuoteLifecycleActor) {
 function formatHistoryTime(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('pt-BR', {
+  return formatDate(date, {
     dateStyle: 'short',
     timeStyle: 'short',
     timeZone: 'America/Fortaleza',
-  }).format(date)
+  })
 }
 
 export function QuoteLifecycleHistory({

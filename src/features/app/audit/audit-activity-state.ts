@@ -11,6 +11,7 @@
  * checks exist only to give faster feedback and can never widen what the
  * server accepts.
  */
+import { formatDate } from '@/lib/intl/format'
 
 export const AUDIT_ACTIONS = [
   'create',
@@ -239,9 +240,9 @@ export function buildAuditPageRequest(
 export function formatAuditTimestamp(value: string): string {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat('pt-BR', {
+  return formatDate(date, {
     dateStyle: 'short',
     timeStyle: 'short',
     timeZone: 'America/Fortaleza',
-  }).format(date)
+  })
 }

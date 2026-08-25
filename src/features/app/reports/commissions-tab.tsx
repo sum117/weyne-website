@@ -7,6 +7,7 @@ import {
   type DataTableColumnDef,
 } from '@/components/data-table/data-table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatCurrency } from '@/lib/intl/format'
 import {
   buildCommissionPage,
   resolveCommissionAccess,
@@ -35,13 +36,8 @@ import type { ReportShellContext } from './reports-shell'
 
 export const COMMISSIONS_TAB_LABEL = 'Comissões'
 
-const currencyFormatter = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL',
-})
-
 function formatMoney(value: string): string {
-  return currencyFormatter.format(Number(value))
+  return formatCurrency(Number(value))
 }
 
 type CommissionsTabProps = {

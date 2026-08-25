@@ -37,7 +37,6 @@ describe('authorized audit activity query', () => {
       error: {
         code: 'UNAUTHENTICATED',
         status: 401,
-        message: 'Autenticação necessária.',
       },
     })
     expect(store.listEvents).not.toHaveBeenCalled()

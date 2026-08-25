@@ -22,6 +22,7 @@ import {
   type QuoteLifecycleHistoryEvent,
 } from '@/features/app/quotes/quote-lifecycle'
 import { cn } from '@/lib/cn'
+import { formatDate as formatLocalizedDate } from '@/lib/intl/format'
 
 export interface QuoteDetail {
   readonly id: string
@@ -79,8 +80,6 @@ export type QuoteDetailState =
     }
   | { readonly kind: 'ready'; readonly quote: QuoteDetail }
 
-const dateFormatter = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' })
-
 function formatCurrency(value: string) {
   return `R$ ${formatDecimal(value, 2, 2)}`
 }
@@ -108,8 +107,9 @@ function formatDate(value: string | null) {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
   if (!match) return value
 
-  return dateFormatter.format(
+  return formatLocalizedDate(
     new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]))),
+    { timeZone: 'UTC' },
   )
 }
 
