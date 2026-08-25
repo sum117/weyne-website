@@ -1,6 +1,11 @@
 import type { SettingsPublicErrorCode } from './settings.functions'
 
-export const SETTINGS_ERROR_MESSAGES: Readonly<Record<SettingsPublicErrorCode, string>> = {
+/**
+ * Staged for the upcoming settings UI surface (no importer yet). The
+ * `Record<SettingsPublicErrorCode, string>` type keeps this map exhaustive
+ * over the server's error-code union at compile time.
+ */
+export const SETTINGS_ERROR_MESSAGES: Record<SettingsPublicErrorCode, string> = {
   VALIDATION_FAILED: 'Os dados informados são inválidos.',
   UNAUTHENTICATED: 'Autenticação necessária.',
   FORBIDDEN: 'Você não tem permissão para realizar esta operação.',

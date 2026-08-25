@@ -324,7 +324,6 @@ describe('AuditActivityViewer', () => {
       error: {
         code: 'FORBIDDEN',
         status: 403,
-        message: 'Apenas administradores podem consultar a auditoria.',
       },
     })
 
