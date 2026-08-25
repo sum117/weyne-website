@@ -1,0 +1,15 @@
+[Unit]
+Description=Weyne PostgreSQL backup
+Requires=docker.service
+After=docker.service
+OnFailure=weyne-postgres-backup-alert@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/weyne/deploy
+EnvironmentFile=/etc/weyne/postgres-backup.env
+ExecStart=/usr/bin/docker compose --env-file /etc/weyne/postgres-backup.env -f docker-compose.postgres-ops.yml --profile operations run --rm postgres-backup
+User=weyne-ops
+Group=weyne-ops
+NoNewPrivileges=true
+PrivateTmp=true

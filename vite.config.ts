@@ -13,7 +13,8 @@ export default defineConfig({
     tanstackStart({
       prerender: {
         enabled: true,
-        crawlLinks: true,
+        autoStaticPathsDiscovery: false,
+        crawlLinks: false,
         failOnError: true,
       },
     }),

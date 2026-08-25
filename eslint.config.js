@@ -9,7 +9,10 @@ export default tseslint.config(
       '.output',
       '.nitro',
       '.tanstack',
+      '.worktrees/**',
       'node_modules',
+      'artifacts/**',
+      'spikes/**/dist/**',
       'playwright-report',
       'test-results',
       'docs/**',
@@ -57,6 +60,17 @@ export default tseslint.config(
         'error',
         { prefer: 'type-imports', fixStyle: 'inline-type-imports' },
       ],
+    },
+  },
+  {
+    // Privacy-safe logging (threat model T10/T11): application code must route
+    // every log line through src/lib/server/log-redaction.ts so raw errors,
+    // headers, cookies, and tokens never reach the console. CLI scripts,
+    // spikes, and tests keep direct console access.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/lib/server/log-redaction.ts'],
+    rules: {
+      'no-console': 'error',
     },
   },
 )

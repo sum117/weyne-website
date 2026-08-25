@@ -10,33 +10,135 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as EntrarRouteImport } from './routes/entrar'
+import { Route as AppIndexRouteImport } from './routes/app/index'
+import { Route as AppPadroesRouteImport } from './routes/app/padroes'
+import { Route as AppProdutosRouteImport } from './routes/app/produtos'
+import { Route as AppRelatoriosRouteImport } from './routes/app/relatorios'
+import { Route as ApiAuthSplatRouteImport } from './routes/api.auth.$'
+import { Route as AppConfiguracoesAuditoriaRouteImport } from './routes/app/configuracoes/auditoria'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EntrarRoute = EntrarRouteImport.update({
+  id: '/entrar',
+  path: '/entrar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPadroesRoute = AppPadroesRouteImport.update({
+  id: '/padroes',
+  path: '/padroes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProdutosRoute = AppProdutosRouteImport.update({
+  id: '/produtos',
+  path: '/produtos',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppRelatoriosRoute = AppRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => AppRoute,
+} as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppConfiguracoesAuditoriaRoute =
+  AppConfiguracoesAuditoriaRouteImport.update({
+    id: '/configuracoes/auditoria',
+    path: '/configuracoes/auditoria',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/entrar': typeof EntrarRoute
+  '/app/padroes': typeof AppPadroesRoute
+  '/app/produtos': typeof AppProdutosRoute
+  '/app/relatorios': typeof AppRelatoriosRoute
+  '/app/': typeof AppIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/app/configuracoes/auditoria': typeof AppConfiguracoesAuditoriaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/entrar': typeof EntrarRoute
+  '/app/padroes': typeof AppPadroesRoute
+  '/app/produtos': typeof AppProdutosRoute
+  '/app/relatorios': typeof AppRelatoriosRoute
+  '/app': typeof AppIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/app/configuracoes/auditoria': typeof AppConfiguracoesAuditoriaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/entrar': typeof EntrarRoute
+  '/app/padroes': typeof AppPadroesRoute
+  '/app/produtos': typeof AppProdutosRoute
+  '/app/relatorios': typeof AppRelatoriosRoute
+  '/app/': typeof AppIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/app/configuracoes/auditoria': typeof AppConfiguracoesAuditoriaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/entrar'
+    | '/app/padroes'
+    | '/app/produtos'
+    | '/app/relatorios'
+    | '/app/'
+    | '/api/auth/$'
+    | '/app/configuracoes/auditoria'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/entrar'
+    | '/app/padroes'
+    | '/app/produtos'
+    | '/app/relatorios'
+    | '/app'
+    | '/api/auth/$'
+    | '/app/configuracoes/auditoria'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/entrar'
+    | '/app/padroes'
+    | '/app/produtos'
+    | '/app/relatorios'
+    | '/app/'
+    | '/api/auth/$'
+    | '/app/configuracoes/auditoria'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
+  EntrarRoute: typeof EntrarRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,21 +150,99 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/entrar': {
+      id: '/entrar'
+      path: '/entrar'
+      fullPath: '/entrar'
+      preLoaderRoute: typeof EntrarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/padroes': {
+      id: '/app/padroes'
+      path: '/padroes'
+      fullPath: '/app/padroes'
+      preLoaderRoute: typeof AppPadroesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/produtos': {
+      id: '/app/produtos'
+      path: '/produtos'
+      fullPath: '/app/produtos'
+      preLoaderRoute: typeof AppProdutosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/relatorios': {
+      id: '/app/relatorios'
+      path: '/relatorios'
+      fullPath: '/app/relatorios'
+      preLoaderRoute: typeof AppRelatoriosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/configuracoes/auditoria': {
+      id: '/app/configuracoes/auditoria'
+      path: '/configuracoes/auditoria'
+      fullPath: '/app/configuracoes/auditoria'
+      preLoaderRoute: typeof AppConfiguracoesAuditoriaRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppPadroesRoute: typeof AppPadroesRoute
+  AppProdutosRoute: typeof AppProdutosRoute
+  AppRelatoriosRoute: typeof AppRelatoriosRoute
+  AppIndexRoute: typeof AppIndexRoute
+  AppConfiguracoesAuditoriaRoute: typeof AppConfiguracoesAuditoriaRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppPadroesRoute: AppPadroesRoute,
+  AppProdutosRoute: AppProdutosRoute,
+  AppRelatoriosRoute: AppRelatoriosRoute,
+  AppIndexRoute: AppIndexRoute,
+  AppConfiguracoesAuditoriaRoute: AppConfiguracoesAuditoriaRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
+  EntrarRoute: EntrarRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

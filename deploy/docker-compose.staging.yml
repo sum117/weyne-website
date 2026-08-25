@@ -1,0 +1,189 @@
+# ─────────────────────────────────────────────────────────────────────────
+# Weyne Representações — staging-like full stack rehearsal.
+#
+# Boots the COMPLETE production topology on one host with private networks:
+# PostgreSQL and MinIO (standing in for R2) join the existing app/Caddy/
+# tunnel shape. NOTHING publishes a host port — the only ingress is the
+# Cloudflare tunnel; operators reach the stack through it or via
+# `docker compose exec`.
+#
+#   cd deploy
+#   cp .env.staging.example .env.staging   # fill in fake/runtime values
+#   docker compose --env-file .env.staging -f docker-compose.staging.yml up -d --wait
+#
+# Dependency ordering (`depends_on`) is startup convenience ONLY: the app's
+# own /readyz probe is the source of truth for dependency readiness, so a
+# database or storage outage flips readiness to 503 regardless of ordering.
+# ─────────────────────────────────────────────────────────────────────────
+name: weyne-staging
+
+services:
+  postgres:
+    image: postgres:17.6-bookworm
+    restart: unless-stopped
+    # Credentials arrive ONLY through the env file; no defaults here.
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env.staging}
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env.staging}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.staging}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [backend]
+    healthcheck:
+      # Liveness of the server process itself.
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  storage:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env.staging}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env.staging}
+    volumes:
+      - storage-data:/data
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+    logging: *logging
+
+  storage-init:
+    image: minio/mc:latest
+    depends_on:
+      storage:
+        condition: service_healthy
+    environment:
+      S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env.staging}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env.staging}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env.staging}
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        mc alias set local http://storage:9000 "$${S3_ACCESS_KEY_ID}" "$${S3_SECRET_ACCESS_KEY}"
+        mc mb --ignore-existing "local/$${S3_BUCKET}"
+        mc anonymous set none "local/$${S3_BUCKET}"
+        mc stat "local/$${S3_BUCKET}"
+    restart: "no"
+    networks: [backend]
+    logging: *logging
+
+  migrate:
+    image: ${WEYNE_IMAGE:?set WEYNE_IMAGE to an immutable GHCR tag or digest in .env.staging}
+    command: ["node", "dist/server/migrate.js"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env.staging}
+      MIGRATION_CLEANUP_RELEASE: ${MIGRATION_CLEANUP_RELEASE:-}
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [backend]
+    logging: *logging
+
+  app:
+    image: ${WEYNE_IMAGE:?set WEYNE_IMAGE to an immutable GHCR tag or digest in .env.staging}
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env.staging}
+      # Server-only auth configuration; see docs/operations/authentication.md.
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env.staging}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL in .env.staging}
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      S3_ENDPOINT: http://storage:9000
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env.staging}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID in .env.staging}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY in .env.staging}
+      S3_FORCE_PATH_STYLE: "true"
+    restart: always
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      storage-init:
+        condition: service_completed_successfully
+    networks: [backend, edge]
+    # Readiness (/readyz) probes DATABASE + object storage; liveness
+    # (/healthz) proves only that this process is serving. A dependency
+    # outage makes the container unhealthy WITHOUT restarting it.
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/readyz').then(async r=>{const b=await r.json();process.exit(r.ok&&b.ready?0:1)}).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 10s
+      retries: 4
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+    logging: *logging
+
+  web:
+    image: caddy:2-alpine
+    restart: always
+    depends_on:
+      app:
+        condition: service_started
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+    logging: *logging
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    environment:
+      # Dedicated staging tunnel token (Zero Trust → Networks → Tunnels).
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in .env.staging}
+    restart: always
+    depends_on:
+      web:
+        condition: service_started
+    networks: [edge]
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+    logging: *logging
+
+networks:
+  backend:
+    name: weyne_staging_backend
+    internal: true
+  edge:
+    name: weyne_staging_edge
+
+volumes:
+  postgres-data:
+  storage-data:

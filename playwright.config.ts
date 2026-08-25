@@ -1,15 +1,20 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const PORT = 3100
+const PORT = 3191
 const BASE_URL = `http://localhost:${PORT}`
 
 /**
- * E2E runs against the prerendered client build served statically, so tests
- * exercise the real initial HTML plus the hydrating client bundle.
+ * E2E runs against the production runtime. The public route is still served
+ * from its prerendered HTML while application routes exercise their real SSR
+ * response plus the hydrating client bundle.
  * Run a production build first: `bun run build` then `bun run test:e2e`.
  */
 export default defineConfig({
   testDir: './tests/e2e',
+  // Quote-editor specs are wired to their own Vite fixture config
+  // (playwright.quotes.config.ts, `bun run test:e2e:quotes`); under this
+  // production runtime the /tests/e2e/fixtures/* routes 404.
+  testIgnore: ['tests/e2e/quotes/**', 'tests/e2e/authenticated-shell.spec.ts'],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -27,8 +32,14 @@ export default defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
   webServer: {
-    command: `bun scripts/serve-dist.ts ${PORT}`,
-    url: BASE_URL,
+    command: 'node dist/server/runtime.js',
+    url: `${BASE_URL}/healthz`,
+    env: {
+      DATABASE_URL:
+        'postgresql://weyne_test:weyne_test@127.0.0.1:5432/weyne_test',
+      HOST: '127.0.0.1',
+      PORT: String(PORT),
+    },
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },

@@ -75,7 +75,7 @@ function SheetContent({
       >
         {children}
         {showClose && (
-          <SheetPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-70 outline-hidden transition hover:opacity-100 focus-visible:ring-2 focus-visible:ring-baltic">
+          <SheetPrimitive.Close className="absolute top-2 right-2 grid size-11 place-content-center rounded-lg opacity-70 outline-hidden transition hover:opacity-100 focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2">
             <X size={20} weight="light" />
             <span className="sr-only">Fechar</span>
           </SheetPrimitive.Close>

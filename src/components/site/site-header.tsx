@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { List, WhatsappLogo, X } from '@phosphor-icons/react/dist/ssr'
 import { Button } from '@/components/ui/button'
 import {
@@ -6,6 +6,7 @@ import {
   SheetContent,
   SheetDescription,
   SheetTitle,
+  SheetTrigger,
 } from '@/components/ui/sheet'
 import { cn } from '@/lib/cn'
 import { siteConfig } from '@/features/landing/content'
@@ -27,6 +28,7 @@ function useScrolled(threshold = 24) {
 export function SiteHeader() {
   const scrolled = useScrolled()
   const [menuOpen, setMenuOpen] = useState(false)
+  const firstMobileLinkRef = useRef<HTMLAnchorElement>(null)
 
   // Close the mobile sheet once the desktop breakpoint is reached.
   useEffect(() => {
@@ -53,28 +55,34 @@ export function SiteHeader() {
           className="flex flex-none items-center gap-3 rounded-md focus-visible:ring-2 focus-visible:ring-baltic focus-visible:ring-offset-2 focus-visible:ring-offset-transparent focus-visible:outline-hidden"
         >
           <span className="relative block size-10 flex-none">
-            <img
-              src="/images/monogram-white.png"
-              alt=""
-              aria-hidden="true"
-              width={40}
-              height={40}
-              className={cn(
-                'absolute inset-0 size-full object-contain transition-opacity duration-400',
-                scrolled ? 'opacity-0' : 'opacity-100',
-              )}
-            />
-            <img
-              src="/images/monogram-blue.png"
-              alt=""
-              aria-hidden="true"
-              width={40}
-              height={40}
-              className={cn(
-                'absolute inset-0 size-full object-contain transition-opacity duration-400',
-                scrolled ? 'opacity-100' : 'opacity-0',
-              )}
-            />
+            <picture>
+              <source srcSet="/images/monogram-white.webp" type="image/webp" />
+              <img
+                src="/images/monogram-white.png"
+                alt=""
+                aria-hidden="true"
+                width={40}
+                height={40}
+                className={cn(
+                  'absolute inset-0 size-full object-contain transition-opacity duration-400',
+                  scrolled ? 'opacity-0' : 'opacity-100',
+                )}
+              />
+            </picture>
+            <picture>
+              <source srcSet="/images/monogram-blue.webp" type="image/webp" />
+              <img
+                src="/images/monogram-blue.png"
+                alt=""
+                aria-hidden="true"
+                width={40}
+                height={40}
+                className={cn(
+                  'absolute inset-0 size-full object-contain transition-opacity duration-400',
+                  scrolled ? 'opacity-100' : 'opacity-0',
+                )}
+              />
+            </picture>
           </span>
           <span className="flex flex-col leading-none">
             <span
@@ -120,28 +128,32 @@ export function SiteHeader() {
 
         {/* Mobile burger + sheet */}
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
-          <button
-            type="button"
-            aria-label="Menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((o) => !o)}
-            className={cn(
-              'grid size-11.5 cursor-pointer place-items-center rounded-[13px] border transition duration-300 hover:brightness-105 focus-visible:ring-2 focus-visible:ring-baltic focus-visible:outline-hidden nav:hidden',
-              scrolled
-                ? 'border-[rgb(3_79_131/0.14)] bg-[rgb(3_79_131/0.08)] text-ink'
-                : 'border-white/28 bg-white/16 text-white',
-            )}
-          >
-            {menuOpen ? (
-              <X size={24} weight="light" />
-            ) : (
-              <List size={24} weight="light" />
-            )}
-          </button>
+          <SheetTrigger asChild>
+            <button
+              type="button"
+              aria-label="Menu"
+              className={cn(
+                'grid size-11.5 cursor-pointer place-items-center rounded-[13px] border transition duration-300 hover:brightness-105 focus-visible:ring-2 focus-visible:ring-baltic focus-visible:outline-hidden nav:hidden',
+                scrolled
+                  ? 'border-[rgb(3_79_131/0.14)] bg-[rgb(3_79_131/0.08)] text-ink'
+                  : 'border-white/28 bg-white/16 text-white',
+              )}
+            >
+              {menuOpen ? (
+                <X size={24} weight="light" />
+              ) : (
+                <List size={24} weight="light" />
+              )}
+            </button>
+          </SheetTrigger>
 
           <SheetContent
             side="top"
             showClose={false}
+            onOpenAutoFocus={(event) => {
+              event.preventDefault()
+              firstMobileLinkRef.current?.focus()
+            }}
             className="inset-x-3 top-[max(env(safe-area-inset-top,0px),12px)] gap-1 rounded-[20px] border border-line p-3.5 shadow-[0_40px_70px_-34px_rgb(1_20_36/0.5)]"
           >
             <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
@@ -151,6 +163,7 @@ export function SiteHeader() {
             {nav.map((item) => (
               <a
                 key={item.href}
+                ref={item === nav[0] ? firstMobileLinkRef : undefined}
                 href={item.href}
                 onClick={() => setMenuOpen(false)}
                 className="rounded-xl px-4 py-3.5 font-sans text-[16px] font-medium text-ink transition hover:bg-paper focus-visible:bg-paper focus-visible:outline-hidden"

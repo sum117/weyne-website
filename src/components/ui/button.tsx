@@ -16,15 +16,27 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary:
-          'rounded-full bg-blue text-white shadow-[0_12px_26px_-14px_rgb(3_79_131/0.75)] hover:-translate-y-px hover:bg-baltic hover:shadow-[0_16px_30px_-14px_rgb(6_156_255/0.6)]',
+          'rounded-full bg-blue text-white shadow-[0_12px_26px_-14px_rgb(3_79_131/0.75)] hover:-translate-y-px hover:bg-navy hover:shadow-[0_16px_30px_-14px_rgb(6_156_255/0.6)] disabled:bg-navy/75 disabled:opacity-100 disabled:shadow-none',
         inverse:
           'rounded-full bg-white text-navy shadow-[0_20px_40px_-18px_rgb(0_0_0/0.5)] hover:-translate-y-0.5 hover:bg-sand hover:shadow-[0_26px_48px_-18px_rgb(238_202_160/0.5)]',
         sand: 'rounded-xl bg-sand text-[#3a2a12] hover:-translate-y-0.5 hover:bg-white',
+        secondary:
+          'rounded-lg bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80',
+        outline:
+          'rounded-lg border border-input bg-background text-foreground shadow-xs hover:bg-accent hover:text-accent-foreground',
+        ghost:
+          'rounded-lg text-foreground hover:bg-accent hover:text-accent-foreground',
+        destructive:
+          'rounded-lg bg-destructive text-destructive-foreground shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive',
       },
       size: {
         pill: 'gap-2.25 px-5 py-2.75 text-sm font-semibold',
         pillLg: 'gap-3 px-7 py-4.25 text-[15.5px] font-semibold',
         submit: 'gap-2.75 px-6 py-4.25 text-[15.5px] font-semibold',
+        sm: 'h-8 gap-1.5 rounded-md px-3 text-xs font-semibold',
+        default: 'h-9 gap-2 px-4 text-sm font-semibold',
+        lg: 'h-11 gap-2 px-6 text-base font-semibold',
+        icon: 'size-11 rounded-lg',
       },
     },
     defaultVariants: {

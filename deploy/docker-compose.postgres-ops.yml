@@ -1,0 +1,53 @@
+name: weyne-postgres-ops
+
+services:
+  postgres-backup:
+    image: postgres:17.6-alpine
+    profiles: [operations]
+    restart: "no"
+    environment:
+      PGHOST: ${POSTGRES_HOST:?set the PostgreSQL host or private-network alias}
+      PGPORT: ${POSTGRES_PORT:-5432}
+      PGUSER: ${POSTGRES_BACKUP_USER:-weyne_backup}
+      PGDATABASE: ${POSTGRES_DB:-weyne}
+      PGPASS_SOURCE_FILE: /run/secrets/postgres_backup_credential
+      BACKUP_DIR: /backups
+      RETAIN_COUNT: ${POSTGRES_BACKUP_RETAIN_COUNT:-14}
+      RETAIN_DAYS: ${POSTGRES_BACKUP_RETAIN_DAYS:-30}
+    secrets:
+      - postgres_backup_credential
+    volumes:
+      - ./postgres:/ops:ro
+      - ${POSTGRES_BACKUP_DIR:?set an encrypted host backup directory}:/backups
+    networks: [database]
+    entrypoint: ["/bin/sh", "/ops/backup.sh"]
+
+  postgres-restore-drill:
+    image: postgres:17.6-alpine
+    profiles: [operations]
+    restart: "no"
+    environment:
+      PGHOST: ${POSTGRES_HOST:?set the PostgreSQL host or private-network alias}
+      PGPORT: ${POSTGRES_PORT:-5432}
+      PGUSER: ${POSTGRES_RESTORE_USER:-weyne_restore_operator}
+      PGMAINTENANCE_DATABASE: postgres
+      PGPASS_SOURCE_FILE: /run/secrets/postgres_restore_credential
+      BACKUP_DIR: /backups
+    secrets:
+      - postgres_restore_credential
+    volumes:
+      - ./postgres:/ops:ro
+      - ${POSTGRES_BACKUP_DIR:?set an encrypted host backup directory}:/backups:ro
+    networks: [database]
+    entrypoint: ["/bin/sh", "/ops/restore-drill.sh"]
+
+secrets:
+  postgres_backup_credential:
+    file: ${POSTGRES_BACKUP_CREDENTIAL_FILE:?set runtime backup credential file}
+  postgres_restore_credential:
+    file: ${POSTGRES_RESTORE_CREDENTIAL_FILE:?set runtime restore credential file}
+
+networks:
+  database:
+    external: true
+    name: ${POSTGRES_NETWORK:?set the private Docker network that reaches PostgreSQL}

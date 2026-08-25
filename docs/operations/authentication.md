@@ -1,0 +1,342 @@
+# Authentication runtime (Better Auth)
+
+Operational reference for the Better Auth integration described in
+[ADR 0003](../adr/0003-persistence-auth-api-and-storage.md). Sessions are
+stored in PostgreSQL, so authentication shares the database operational
+boundary documented in [ssr-runtime.md](ssr-runtime.md).
+
+## What is in the repository
+
+| Path | Role |
+| --- | --- |
+| `src/lib/auth/config.server.ts` | Validated, server-only environment contract |
+| `src/lib/auth/auth.server.ts` | The Better Auth instance over the canonical Drizzle tables |
+| `src/lib/auth/provisioning.server.ts` | Administrator-driven credential creation |
+| `src/lib/auth/contract.ts` | Isomorphic contract: public paths and the minimal session projection |
+| `src/lib/auth/session.server.ts` | Authoritative server-side session resolution (`getAppSession`, `requireAppSession`) |
+| `src/lib/auth/cookie.server.ts` | Expiring `Set-Cookie` headers, used only when revocation could not be confirmed |
+| `src/routes/api.auth.$.ts` | The `GET`/`POST` protocol route mounted at `/api/auth/*` |
+| `src/routes/entrar.tsx` | The public credential login page |
+| `src/features/app/auth/` | Login/logout server functions, login form, sign-out control, route guard |
+| `src/start.ts` | Global Start config; installs the framework CSRF middleware over server functions |
+| `scripts/provision-auth-user.ts` | Operator utility that creates one credential identity |
+| `scripts/smoke-auth-flow.ts` | Live login/logout journey smoke against a running runtime |
+
+The route delegates every request to `auth.handler(request)`. Password
+hashing, session tokens, cookie signing, origin validation, and CSRF checks
+are Better Auth's own implementations; this repository adds none of its own
+cryptography.
+
+## Environment variables
+
+Both are **server-only**. A `VITE_` prefix would publish the value in the
+browser bundle, so neither may ever carry one.
+
+| Variable | Development | Production | Notes |
+| --- | --- | --- | --- |
+| `BETTER_AUTH_SECRET` | optional | **required** | Minimum 32 characters. Generate with `openssl rand -base64 32`. |
+| `BETTER_AUTH_URL` | optional | **required** | Absolute public origin. Must use `https` in production. |
+| `DATABASE_URL` | required | required | Sessions and identities live here; see `ssr-runtime.md`. |
+
+`NODE_ENV=production` is what selects the fail-closed branch. The production
+and staging Compose files set it explicitly and pass both variables with
+`:?`, so a deploy missing either one fails loudly instead of starting an app
+that would refuse every authenticated request.
+
+### Development behavior
+
+With no configuration at all the application still runs: it falls back to
+`http://localhost:3000` and a fixed, clearly labelled development key. That
+key is never valid in production — the configuration parser rejects it by
+name.
+
+### Production behavior (fail closed)
+
+Startup configuration is rejected, with the variable named and its value
+never echoed, when any of the following holds:
+
+- `BETTER_AUTH_SECRET` is missing, shorter than 32 characters, or equal to the
+  development fallback;
+- `BETTER_AUTH_URL` is missing, is not an absolute `http(s)` URL, or does not
+  use `https`.
+
+## Cookies and cross-site protection
+
+- Session cookies are `HttpOnly`, `SameSite=Lax`, `Path=/`.
+- `Secure` is applied whenever the resolved origin is `https`, which
+  production always is (Cloudflare terminates TLS in front of Caddy). Better
+  Auth then also applies the `__Secure-` cookie-name prefix.
+- Origin validation and CSRF checks are pinned on explicitly
+  (`disableCSRFCheck: false`, `disableOriginCheck: false`). Better Auth
+  disables the origin check by default under `NODE_ENV=test`; pinning it keeps
+  the behavior identical in tests, development, and production.
+- A cookie-bearing request with a foreign `Origin`, or with no `Origin` and no
+  `Referer`, is rejected with `403`.
+- Sessions are database rows, so sign-out revokes server-side. There is no
+  stateless cookie cache; a revoked cookie cannot regain access.
+
+## Application login, logout, and protected routes
+
+The Better Auth protocol route at `/api/auth/*` stays mounted, but the
+application never calls it from the browser. The login journey goes through
+two server functions in `src/features/app/auth/login.functions.ts`, which
+delegate the security-critical work to `auth.api.signInEmail` /
+`auth.api.signOut` and forward Better Auth's own `Set-Cookie` headers
+verbatim. No cookie, token, or hash is ever built by this repository.
+
+| Surface | Path | Behavior |
+| --- | --- | --- |
+| Login page | `/entrar` | Public, `noindex`. An already-authenticated visitor is redirected away in `beforeLoad`. |
+| Protected application | `/app`, `/app/*` | Every route calls `requireAuthenticatedRoute` in `beforeLoad`, which runs during SSR — an anonymous request gets `307 /entrar?redirect=<path>` before any protected markup or loader data is produced. |
+
+Guarantees worth keeping in mind when changing this area:
+
+- **`beforeLoad`, never the component.** A component-level check would render
+  and stream protected markup first. `tests/unit/authenticated-route-boundary.test.ts`
+  fails the build if any `/app` route file drops the guard, so a new route
+  cannot silently ship unprotected.
+- **The redirect target is sanitized.** `sanitizeRedirectPath` reduces the
+  `redirect` search value to a same-origin path, so `//evil.example`,
+  `https://evil.example`, and `/\evil.example` cannot be used to bounce a
+  visitor off-site after login.
+- **Route context is presentation only.** The session placed in route context
+  is never an authorization decision. Every privileged server function calls
+  `requireAppSession()` itself and re-resolves the caller from the request
+  cookie, because a server function is an RPC endpoint a client can POST to
+  directly without ever loading the route that normally calls it.
+- **The client sees a minimal projection.** `AppSession` carries id, name,
+  email, role, and the session expiry — no session token, no `auth_subject`,
+  no password material.
+- **Server functions are CSRF-checked by the framework.** `src/start.ts`
+  installs `createCsrfMiddleware` over `serverFn` traffic. This is required
+  because a direct `auth.api.*` call bypasses the origin validation
+  `auth.handler` performs for `/api/auth/*` requests. Ordinary document
+  requests are deliberately not filtered — they are top-level navigations
+  that must work from any entry point.
+- **Logout revokes server-side.** `auth.api.signOut` deletes the session row;
+  the expired cookies it returns are forwarded verbatim. If the revocation
+  call itself fails, `expiredSessionCookieHeaders` still clears the browser
+  cookie, and the guard re-checks the (still valid) server session on the
+  next request rather than assuming success.
+
+### Live smoke of the journey
+
+`scripts/smoke-auth-flow.ts` drives the whole journey over raw HTTP against a
+running runtime, using the same seroval wire format the browser client uses.
+It needs the two server-function IDs, which are stable content hashes visible
+in the built client chunk:
+
+```sh
+grep -o '[a-f0-9]\{64\}' dist/client/assets/login.functions-*.js
+# first hash  = signInWithPassword, second = signOutCurrentSession
+
+DATABASE_URL=... BETTER_AUTH_URL=http://127.0.0.1:3199 \
+  BETTER_AUTH_SECRET=... PORT=3199 HOST=127.0.0.1 node dist/server/runtime.js
+
+WEYNE_SMOKE_ORIGIN=http://127.0.0.1:3199 \
+WEYNE_SMOKE_EMAIL=... WEYNE_SMOKE_PASSWORD=... \
+WEYNE_SMOKE_SIGNIN_ID=<hash1> WEYNE_SMOKE_SIGNOUT_ID=<hash2> \
+  bun scripts/smoke-auth-flow.ts
+```
+
+It asserts the redirect, the login page, non-enumerating rejection, the
+cross-origin 403, cookie attributes, reload persistence, the bounce off
+`/entrar` while authenticated, logout revocation, replayed-cookie refusal,
+and that public `/` is untouched. Use `BETTER_AUTH_URL` with `http` only
+against a local runtime started with `NODE_ENV=development` — production
+rejects a non-https origin by design.
+
+## Schema and migrations
+
+Better Auth uses the canonical `users`, `sessions`, `accounts`, and
+`verifications` tables. Those four ship in
+`drizzle/canonical/0000_canonical_schema.sql`, so no migration was needed for
+them. The adapter is given an explicit singular-to-plural alias map, so no
+column is renamed and no shadow table is created.
+
+One auth-owned table was added:
+`drizzle/canonical/0004_auth_rate_limits.sql` creates `rate_limits`, which
+backs the rate limiter (see below). It is deliberately **not** an audited
+business table — no authorship, no archive column, no audit trigger — because
+its rows are transient counters that the library prunes on its own schedule.
+
+Two canonical columns have no database default and are `NOT NULL`, so the
+integration supplies them and marks both non-writable by any API caller:
+
+- `role` defaults to `read_only`; promotion happens through the admin
+  user-management path, never through an authentication request.
+- `auth_subject` is minted per identity and is never returned in a response.
+
+Primary keys use the canonical `uuid DEFAULT gen_random_uuid()`; Better Auth
+is configured with `generateId: 'uuid'` so it defers to that column default
+instead of emitting its own non-UUID identifier.
+
+Apply migrations with the usual commands — there is no separate auth step:
+
+```sh
+bun run db:migrate       # apply the canonical chain (needs DATABASE_URL)
+bun run db:generate      # regenerate SQL after a schema change
+```
+
+In production the one-shot `migrate` Compose service runs
+`node dist/server/migrate.js` before the app starts.
+
+## Rate limiting
+
+Better Auth's own limiter is enabled explicitly in **every** environment. Its
+default is production-only, which would mean the protection was never
+exercised by a single test or local run — the configuration most likely to be
+wrong is the one nothing executes.
+
+Counters live in PostgreSQL (`storage: 'database'`), not in the default
+in-process `Map`. The container is replaced on every release and the
+deployment may grow a second replica; an in-memory counter forgets an
+in-flight brute-force window at both boundaries. The database adapter uses a
+guarded atomic `UPDATE`, so concurrent requests cannot each pass a stale read.
+
+Configured rules (`src/lib/auth/auth.server.ts`):
+
+| Path | Window | Max |
+| --- | --- | --- |
+| `/sign-in/email` | 60s | 10 |
+| `/request-password-reset` | 15min | 5 |
+| `/reset-password`, `/reset-password/*` | 15min | 5 |
+| `/change-password` | 15min | 10 |
+| anything else under `/api/auth` | 60s | 60 |
+
+The limit is keyed by client address **and** path, so one attacker cannot
+lock every user out of the application.
+
+### Why login goes through `auth.handler`
+
+`signInWithPassword` calls `auth.handler(request)` and **not**
+`auth.api.signInEmail(...)`. This is load-bearing, not stylistic.
+
+Better Auth's rate limiter runs in its **router's** `onRequest` hook. The
+`api` object is the endpoint collection sitting *underneath* that router, so a
+direct `auth.api.*` call never passes through the limiter at all. Using it for
+the login server function would have left the credential endpoint the login
+form actually posts to with unlimited attempts, while
+`/api/auth/sign-in/email` right beside it was correctly throttled — the worst
+possible outcome, because the protection would look present in configuration
+and be absent in practice.
+
+`tests/integration/auth-rate-limit-surface.test.ts` asserts both halves of
+that asymmetry against real PostgreSQL (15 guesses through `auth.api` are all
+evaluated and write zero `rate_limits` rows), and
+`tests/unit/auth-account-security.test.ts` fails the build if the login
+function is refactored back to `auth.api.signInEmail`.
+
+A throttled login returns the distinct `RATE_LIMITED` code so the form can say
+*"Muitas tentativas de acesso"* instead of wrongly claiming the password was
+invalid. That is safe to distinguish because the limit is keyed by address and
+path, never by account, so it reveals nothing about whether an address exists.
+
+## Bootstrapping the first administrator
+
+A freshly migrated database has no identity and public sign-up is disabled, so
+this is the only way in. Run it once after `bun run db:migrate`:
+
+```sh
+DATABASE_URL=... BETTER_AUTH_URL=... BETTER_AUTH_SECRET=... \
+  WEYNE_BOOTSTRAP_ADMIN_NAME='Nome Sobrenome' \
+  WEYNE_BOOTSTRAP_ADMIN_EMAIL='admin@empresa.com.br' \
+  WEYNE_BOOTSTRAP_ADMIN_PASSWORD='...' \
+  bun run auth:bootstrap
+```
+
+Two properties make it safe to run from a deploy script:
+
+- **Idempotent.** It creates an administrator only when the database has none.
+  A second run reports `already_bootstrapped` and exits `0`, so a redeploy or
+  a retried job cannot mint a second administrator. It deliberately does *not*
+  reset an existing password: an idempotent command that silently rewrote a
+  credential would be a backdoor, not a bootstrap.
+- **Fails closed on weak input.** Minimum 16 characters (above the 12 Better
+  Auth enforces), placeholder values such as `changeme`/`admin`/`weyne` are
+  refused, and production rejects a password passed as a command-line
+  argument — an argv value is visible in the process table and in the shell
+  history of the machine it was typed on. Error messages name the broken rule
+  and never echo the password.
+
+Outside production the three values may be passed positionally
+(`bun run auth:bootstrap <name> <email> <password>`) for convenience.
+
+## Password reset and invitations (no email yet)
+
+This release has no mail transport, so delivery is manual. Invitation and
+reset are the **same** mechanism on purpose: a provisioned identity that has
+never signed in and an identity whose owner forgot the password both need
+exactly one thing — a single-use proof that lets them choose a password.
+Modelling them separately would mean two token lifetimes, two revocation
+rules, and two chances to get one of them wrong.
+
+```sh
+DATABASE_URL=... BETTER_AUTH_URL=... BETTER_AUTH_SECRET=... \
+  bun run auth:reset-link "email@example.com"
+```
+
+The command prints a single-use link. Hand it over through a channel you
+already trust, and treat the terminal output as a secret: the link is a bearer
+credential for that account until it is used or expires (one hour).
+
+The token is minted, stored, and consumed entirely by Better Auth's
+`/request-password-reset` and `/reset-password` endpoints — nothing in this
+repository generates a token, hashes a password, or writes a verification row.
+Completing a reset revokes every existing session for that identity
+(`revokeSessionsOnPasswordReset`), so if the password was reset because it was
+compromised, the attacker's live session does not outlive the reset.
+
+The token is **never logged.** The default `sendResetPassword` callback
+records only `userId`; logging the token would turn the log file into a
+credential store. The operator command builds its link from a private Better
+Auth instance rather than mutating the shared one's options, which would race
+with concurrent requests and could hand one caller's reset token to another.
+
+Note that the public `/api/auth/request-password-reset` endpoint keeps
+answering identically for known and unknown addresses, so it cannot be used to
+enumerate accounts. Only the operator command — which is not reachable over
+HTTP — reports that an address has no identity.
+
+## Provisioning additional users
+
+Public sign-up is disabled (`disableSignUp: true`); `/api/auth/sign-up/email`
+returns an error. Identities are created by an operator:
+
+```sh
+DATABASE_URL=... BETTER_AUTH_URL=... \
+  bun scripts/provision-auth-user.ts "Nome" "email@example.com" "senha-longa" admin
+```
+
+Roles are `admin`, `representative`, and `read_only`. The minimum password
+length is 12. The script prints the new user's id, email, and role — never the
+password or its hash. To let the new user choose their own password instead of
+receiving one, provision with a throwaway value and immediately issue a reset
+link with `bun run auth:reset-link`.
+
+## Verification
+
+```sh
+bun run test tests/unit/auth-config.test.ts        # environment contract
+bun run test tests/unit/auth-contract.test.ts      # isomorphic contract + redirect sanitizer
+bun run test tests/unit/auth-account-security.test.ts  # rate-limit/bootstrap/reset decisions
+bun run test tests/unit/auth-login-form.test.tsx   # login form and sign-out control
+bun run test tests/unit/authenticated-route-boundary.test.ts  # every /app route is guarded
+bun run test:database                              # includes the live auth suites
+bunx playwright test --project=chromium            # guard + login page in a real browser
+```
+
+`tests/integration/better-auth-integration.test.ts` exercises the real
+handler against real PostgreSQL: adapter writes, UUID keys, cookie
+attributes under both http and https, session persistence, revocation,
+sign-up refusal, and both cross-site rejection paths.
+`tests/integration/app-session-lifecycle.test.ts` covers the application
+session projection on top of it: minimal non-sensitive fields, persistence
+across independent requests, revocation, expiry, per-device isolation, and
+the cookie-clearing fallback's name/attribute alignment with what Better Auth
+actually sets.
+`tests/integration/auth-account-lifecycle.test.ts` covers rate limiting
+(including survival across a simulated restart), bootstrap idempotency and
+its refusal of weak credentials, and the reset flow end to end — token burn
+after one use, session revocation, forged-token rejection, and the public
+endpoint's non-enumerability.

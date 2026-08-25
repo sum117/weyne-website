@@ -65,7 +65,7 @@ function ContactRow({ icon: RowIcon, label, href, children }: RowProps) {
 export function ContactSection() {
   return (
     <section id="contato" className="py-[clamp(84px,11vw,150px)]">
-      <div className="mx-auto grid max-w-300 grid-cols-[repeat(auto-fit,minmax(320px,1fr))] items-start gap-[clamp(36px,5vw,72px)] px-[clamp(18px,5vw,48px)]">
+      <div className="mx-auto grid max-w-300 grid-cols-[repeat(auto-fit,minmax(320px,1fr))] items-start gap-[clamp(36px,5vw,72px)] px-[clamp(18px,5vw,48px)] max-sm:grid-cols-1">
         {/* Left: heading + contact rows */}
         <Reveal rise={26} fadeMs={900} riseMs={900}>
           <SectionEyebrow tone="light">{contact.eyebrow}</SectionEyebrow>
@@ -106,14 +106,18 @@ export function ContactSection() {
           riseMs={1000}
           delay={100}
         >
-          <img
-            src="/images/monogram-white.png"
-            alt=""
-            aria-hidden="true"
-            width={150}
-            height={150}
-            className="pointer-events-none absolute -top-6 -right-6 w-37.5 opacity-8"
-          />
+          <picture>
+            <source srcSet="/images/monogram-white.webp" type="image/webp" />
+            <img
+              src="/images/monogram-white.png"
+              alt=""
+              aria-hidden="true"
+              width={150}
+              height={150}
+              loading="lazy"
+              className="pointer-events-none absolute -top-6 -right-6 w-37.5 opacity-8"
+            />
+          </picture>
           <div className="relative font-display text-[clamp(22px,2vw,27px)] leading-[1.2]">
             {contact.form.title}
           </div>

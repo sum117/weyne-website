@@ -1,67 +1,191 @@
-name: publish
-
-# Build the static site in the runner (Node + Bun — the TanStack prerender
-# needs a reachable Node server, which is unreliable inside `docker build`),
-# then package dist/client into a tiny Caddy image and push it to GHCR.
-# The VPS pulls this image (pinned by SHA) — the same registry-deploy pattern
-# as the masoria stack.
+name: validate and publish image
 
 on:
+  pull_request:
   push:
     branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
-  packages: write
 
 concurrency:
-  group: publish-${{ github.ref }}
-  cancel-in-progress: false
+  group: image-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  IMAGE_NAME: ghcr.io/sum117/weyne-web
 
 jobs:
-  image:
-    name: build · push ghcr.io/sum117/weyne-web
+  validate:
+    name: test · build immutable image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.14
 
-      - name: Install dependencies
+      - name: Install locked dependencies
         run: bun install --frozen-lockfile
 
-      - name: Build static site (prerender)
+      - name: Run the full quality and production build gate
+        run: bun run check
+
+      - name: Rehearse fresh, upgrade, idempotent, and rollback-compatible migrations
+        run: bun run test:database tests/integration/safe-migration.test.ts
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Check Dockerfile and build inputs
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          call: check
+
+      - name: Build image without publishing
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          load: true
+          push: false
+          tags: weyne-web:validation-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Smoke-test the production image
+        shell: bash
+        run: |
+          set -euo pipefail
+          container_id="$(docker run --detach --rm \
+            --env DATABASE_URL=postgresql://ci:ci@127.0.0.1:5432/ci \
+            --publish 127.0.0.1::3000 \
+            "weyne-web:validation-${GITHUB_SHA}")"
+          trap 'docker logs "$container_id" || true; docker stop "$container_id" >/dev/null || true' EXIT
+          host_port="$(docker port "$container_id" 3000/tcp | sed 's/.*://')"
+          for _ in {1..30}; do
+            if curl --fail --silent --show-error "http://127.0.0.1:${host_port}/healthz" >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo 'Production image did not become healthy within 30 seconds.' >&2
+          exit 1
+
+  publish:
+    name: publish immutable GHCR image
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write
+    outputs:
+      digest: ${{ steps.push.outputs.digest }}
+      immutable-reference: ${{ steps.record.outputs.reference }}
+    steps:
+      - name: Check out validated source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.3.14
+
+      - name: Install locked dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Reproduce production build
         run: bun run build:app
 
       - name: Set up Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
-      - name: Log in to GHCR
-        uses: docker/login-action@v3
+      - name: Log in to GHCR with the job token
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Image metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/sum117/weyne-web
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,format=long
+      - name: Refuse to replace an existing rollback tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          immutable_tag="${IMAGE_NAME}:sha-${GITHUB_SHA}"
+          if docker buildx imagetools inspect "$immutable_tag" >/dev/null 2>&1; then
+            echo "Refusing to replace existing immutable tag: ${immutable_tag}" >&2
+            exit 1
+          fi
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
+      - name: Generate OCI metadata
+        id: meta
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=sha-${{ github.sha }}
+            type=raw,value=latest
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Build and publish once with immutable and alias tags
+        id: push
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=max
+          sbom: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Attest the published image
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-name: ${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.push.outputs.digest }}
+          push-to-registry: true
+
+      - name: Record deployment coordinates
+        id: record
+        shell: bash
+        env:
+          IMAGE_DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          immutable_tag="${IMAGE_NAME}:sha-${GITHUB_SHA}"
+          immutable_reference="${IMAGE_NAME}@${IMAGE_DIGEST}"
+          printf '%s\n' \
+            "commit=${GITHUB_SHA}" \
+            "tag=${immutable_tag}" \
+            "digest=${IMAGE_DIGEST}" \
+            "reference=${immutable_reference}" > image-release.txt
+          echo "reference=${immutable_reference}" >> "$GITHUB_OUTPUT"
+          {
+            echo '### Published image'
+            echo
+            echo "- Commit: \`${GITHUB_SHA}\`"
+            echo "- Immutable tag: \`${immutable_tag}\`"
+            echo "- Digest reference: \`${immutable_reference}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload image digest artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: image-release-${{ github.sha }}
+          path: image-release.txt
+          if-no-files-found: error
+          retention-days: 90

@@ -7,6 +7,9 @@ import {
 import type { ReactNode } from 'react'
 import { Toaster } from '@/components/ui/sonner'
 import appCss from '@/styles/app.css?url'
+import jostLatinFont from '@fontsource-variable/jost/files/jost-latin-wght-normal.woff2?url'
+import newsreaderItalicLatinFont from '@fontsource-variable/newsreader/files/newsreader-latin-wght-italic.woff2?url'
+import newsreaderLatinFont from '@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2?url'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -17,6 +20,27 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: 'stylesheet', href: appCss },
+      {
+        rel: 'preload',
+        href: jostLatinFont,
+        as: 'font',
+        type: 'font/woff2',
+        crossOrigin: 'anonymous',
+      },
+      {
+        rel: 'preload',
+        href: newsreaderLatinFont,
+        as: 'font',
+        type: 'font/woff2',
+        crossOrigin: 'anonymous',
+      },
+      {
+        rel: 'preload',
+        href: newsreaderItalicLatinFont,
+        as: 'font',
+        type: 'font/woff2',
+        crossOrigin: 'anonymous',
+      },
       { rel: 'icon', href: '/favicon.ico', sizes: 'any' },
       { rel: 'icon', href: '/favicon-32.png', type: 'image/png', sizes: '32x32' },
       { rel: 'apple-touch-icon', href: '/apple-touch-icon.png' },
@@ -37,6 +61,22 @@ function RootDocument({ children }: { children: ReactNode }) {
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <HeadContent />
+        <link
+          rel="preload"
+          as="image"
+          type="image/avif"
+          href="/images/carolina-desk-mobile.avif"
+          media="(max-width: 639px)"
+          fetchPriority="high"
+        />
+        <link
+          rel="preload"
+          as="image"
+          type="image/avif"
+          href="/images/carolina-desk.avif"
+          media="(min-width: 640px)"
+          fetchPriority="high"
+        />
         <script dangerouslySetInnerHTML={{ __html: REVEAL_BOOT }} />
       </head>
       <body>

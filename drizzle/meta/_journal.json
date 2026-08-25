@@ -1,0 +1,19 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    { "idx": 0, "version": "7", "when": 0, "tag": "0000_migration_smoke", "breakpoints": true },
+    { "idx": 1, "version": "7", "when": 1, "tag": "0001_catalog_pricing", "breakpoints": true },
+    { "idx": 2, "version": "7", "when": 2, "tag": "0002_quote_persistence", "breakpoints": true },
+    { "idx": 3, "version": "7", "when": 3, "tag": "0003_product_attachments", "breakpoints": true },
+    { "idx": 4, "version": "7", "when": 4, "tag": "0003_server_quote_pricing", "breakpoints": true },
+    { "idx": 5, "version": "7", "when": 5, "tag": "0004_carriers", "breakpoints": true },
+    { "idx": 6, "version": "7", "when": 6, "tag": "0004_order_persistence", "breakpoints": true },
+    { "idx": 7, "version": "7", "when": 7, "tag": "0005_order_attachments", "breakpoints": true },
+    { "idx": 8, "version": "7", "when": 8, "tag": "0004_quote_lifecycle", "breakpoints": true },
+    { "idx": 9, "version": "7", "when": 9, "tag": "0005_quote_to_order_conversion", "breakpoints": true },
+    { "idx": 10, "version": "7", "when": 10, "tag": "0005_reference_records", "breakpoints": true },
+    { "idx": 11, "version": "7", "when": 11, "tag": "0006_quote_pdf_artifacts", "breakpoints": true },
+    { "idx": 12, "version": "7", "when": 12, "tag": "0090_order_security", "breakpoints": true }
+  ]
+}

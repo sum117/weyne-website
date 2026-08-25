@@ -9,18 +9,46 @@
 #   docker compose --env-file .env.weyne pull
 #   docker compose --env-file .env.weyne up -d
 #
-# Ingress: Cloudflare edge (TLS) → weyne tunnel → cloudflared → web:80.
+# Ingress: Cloudflare edge (TLS) → tunnel → Caddy web:80 → app:3000.
 # No host ports are published; the VPS exposes nothing new to the internet.
 # ─────────────────────────────────────────────────────────────────────────
 name: weyne
 
 services:
-  web:
-    image: ghcr.io/sum117/weyne-web:${IMAGE_TAG:?set IMAGE_TAG in .env.weyne (release SHA or "latest")}
+  migrate:
+    image: ${WEYNE_IMAGE:?set WEYNE_IMAGE to an immutable GHCR tag or digest in .env.weyne}
+    command: ["node", "dist/server/migrate.js"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env.weyne}
+      MIGRATION_CLEANUP_RELEASE: ${MIGRATION_CLEANUP_RELEASE:-}
+    restart: "no"
+    networks: [edge]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  app:
+    image: ${WEYNE_IMAGE:?set WEYNE_IMAGE to an immutable GHCR tag or digest in .env.weyne}
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env.weyne}
+      # Server-only auth configuration. `:?` fails the deploy loudly rather
+      # than starting an app that would refuse every authenticated request.
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env.weyne}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL in .env.weyne}
+      # Also set by the image; pinned here so the fail-closed production
+      # branch cannot be lost to a Dockerfile change.
+      NODE_ENV: production
+      HOST: ${HOST:-0.0.0.0}
+      PORT: ${PORT:-3000}
     restart: always
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     networks: [edge]
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/"]
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -29,6 +57,31 @@ services:
       resources:
         limits:
           memory: 128m
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    image: caddy:2-alpine
+    restart: always
+    depends_on:
+      app:
+        condition: service_healthy
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 64m
     logging:
       driver: json-file
       options:

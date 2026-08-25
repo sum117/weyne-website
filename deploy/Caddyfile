@@ -1,32 +1,26 @@
-# Weyne Representações — static file server behind Cloudflare.
+# Weyne Representações — reverse proxy behind Cloudflare.
 #
 # Cloudflare terminates TLS and proxies here over the tunnel, so this listens
 # on plain HTTP :80. Security headers are set here for defense in depth
 # (Cloudflare adds its own at the edge).
 :80 {
-	root * /srv
 	encode zstd gzip
-	file_server
-
-	# Content-hashed Vite build assets — immutable, cache for a year.
-	@immutable path /assets/*
-	header @immutable Cache-Control "public, max-age=31536000, immutable"
-
-	# HTML — always revalidate so contact/copy changes roll out immediately.
-	@html path / *.html
-	header @html Cache-Control "public, max-age=0, must-revalidate"
-
-	# Other static (images, favicons, og, manifest, sitemap) — one-day cache.
-	@static path /images/* /og/* *.png *.jpg *.jpeg *.webp *.avif *.svg *.ico *.webmanifest *.xml *.txt
-	header @static Cache-Control "public, max-age=86400"
+	reverse_proxy app:3000 {
+		# Correlation IDs: mint one per request when the edge did not send
+		# one; the app echoes it back and stamps it on every log line.
+		header_up X-Request-Id "{http.request.uuid}"
+	}
 
 	# Baseline security headers on every response.
 	header {
 		-Server
+		Content-Security-Policy "default-src 'self'; base-uri 'self'; connect-src 'self'; font-src 'self' data:; form-action 'self'; frame-ancestors 'none'; frame-src 'none'; img-src 'self' data:; manifest-src 'self'; media-src 'none'; object-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; upgrade-insecure-requests"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "strict-origin-when-cross-origin"
-		X-Frame-Options "SAMEORIGIN"
-		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		X-Frame-Options "DENY"
+		Permissions-Policy "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
 		Strict-Transport-Security "max-age=31536000; includeSubDomains"
 	}
 

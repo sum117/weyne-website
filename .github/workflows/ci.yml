@@ -13,6 +13,20 @@ jobs:
   quality:
     name: typecheck · lint · test · build
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6-alpine
+        env:
+          POSTGRES_USER: weyne_ci
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: weyne_ci_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U weyne_ci -d weyne_ci_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
     steps:
       - uses: actions/checkout@v4
 
@@ -24,6 +38,27 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Migrate the empty CI database
+        env:
+          DATABASE_URL: postgresql://weyne_ci@127.0.0.1:5432/weyne_ci_test
+        run: bun run db:migrate
+
+      - name: Verify the migrated PostgreSQL smoke schema
+        env:
+          TEST_DATABASE_URL: postgresql://weyne_ci@127.0.0.1:5432/weyne_ci_test
+        run: bun run test:database tests/integration/database-smoke.test.ts
+
+      - name: Verify the canonical PostgreSQL schema contract
+        env:
+          TEST_DATABASE_URL: postgresql://weyne_ci@127.0.0.1:5432/weyne_ci_test
+        run: bun run test:database tests/integration/canonical-schema-contract.test.ts
+
       # Runs: check:content → typecheck → lint → unit tests → vite build (prerender).
       - name: Full check
         run: bun run check
+
+      - name: Install Chromium for the production smoke check
+        run: bunx playwright install --with-deps chromium
+
+      - name: Smoke-test the local production stack
+        run: bun run test:production-smoke

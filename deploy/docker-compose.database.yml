@@ -1,0 +1,24 @@
+name: weyne-database
+
+services:
+  postgres:
+    image: postgres:17.6-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: weyne_dev
+      POSTGRES_USER: weyne_dev
+      # Localhost-only development service; production never uses trust auth.
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "127.0.0.1:${WEYNE_DATABASE_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U weyne_dev -d weyne_dev"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 5s
+
+volumes:
+  postgres-data:

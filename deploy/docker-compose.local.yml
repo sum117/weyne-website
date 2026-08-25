@@ -1,0 +1,43 @@
+# Credential-free local rehearsal of the production SSR topology.
+# Build the application first (`bun run build:app`), then run:
+#   docker compose -f deploy/docker-compose.local.yml up -d --build --wait
+# Requests are published only by Caddy at http://127.0.0.1:8080.
+name: weyne-local
+
+services:
+  app:
+    image: weyne-web:local
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://local:local@database.invalid:5432/weyne
+      HOST: 0.0.0.0
+      PORT: 3000
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 2s
+
+  web:
+    image: caddy:2-alpine
+    depends_on:
+      app:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${WEYNE_HTTP_PORT:-8080}:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    networks: [edge]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/healthz"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+      start_period: 2s
+
+networks:
+  edge:

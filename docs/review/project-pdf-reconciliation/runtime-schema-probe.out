@@ -1,0 +1,69 @@
+
+=== P1 catalog list projection (src/features/app/products/catalog.service.server.ts:288) ===
+
+=== P2 audit viewer quote authorization (src/features/app/audit/audit-activity.functions.ts:99) ===
+psql:/tmp/p.sql:7: ERROR:  column p.internal_code_normalized does not exist
+LINE 1: SELECT p.internal_code AS "internalCode", p.internal_code_no...
+                                                  ^
+psql:/tmp/p.sql:11: ERROR:  relation "commercial_resource_scopes" does not exist
+LINE 1: SELECT resource_id::text FROM commercial_resource_scopes WHE...
+                                      ^
+
+=== P3 order visibility resolver (src/domain/orders/read-visibility.server.ts) ===
+psql:/tmp/p.sql:15: ERROR:  relation "commercial_resource_assignments" does not exist
+LINE 1: SELECT 1 FROM commercial_resource_assignments LIMIT 1;
+                      ^
+
+=== P4 quote PDF artifact store (src/lib/quotes/pdf-artifact-postgres.server.ts) ===
+psql:/tmp/p.sql:19: ERROR:  relation "quote_pdf_artifacts" does not exist
+LINE 1: SELECT 1 FROM quote_pdf_artifacts LIMIT 1;
+                      ^
+
+=== P5 quote conversion immutable version history (src/lib/orders/quote-conversion.server.ts:172) ===
+
+=== P6 quote lifecycle command ledger (src/lib/quotes/lifecycle-postgres.server.ts) ===
+psql:/tmp/p.sql:23: ERROR:  relation "quote_versions" does not exist
+LINE 1: SELECT 1 FROM quote_versions LIMIT 1;
+                      ^
+
+=== P7 order attachments (src/lib/orders/attachment-repository.server.ts) ===
+psql:/tmp/p.sql:27: ERROR:  relation "quote_lifecycle_commands" does not exist
+LINE 1: SELECT 1 FROM quote_lifecycle_commands LIMIT 1;
+                      ^
+
+=== P8 price history (src/lib/catalog/pricing.server.ts) ===
+psql:/tmp/p.sql:31: ERROR:  relation "order_attachments" does not exist
+LINE 1: SELECT 1 FROM order_attachments LIMIT 1;
+                      ^
+psql:/tmp/p.sql:35: ERROR:  relation "product_price_history" does not exist
+LINE 1: SELECT 1 FROM product_price_history LIMIT 1;
+                      ^
+
+=== P9 catalog audit (src/features/app/products/catalog.service.server.ts:377) ===
+
+=== P10 order state audit (src/domain/orders/history-source.server.ts) ===
+psql:/tmp/p.sql:39: ERROR:  relation "catalog_audit" does not exist
+LINE 1: SELECT 1 FROM catalog_audit LIMIT 1;
+                      ^
+psql:/tmp/p.sql:43: ERROR:  relation "order_state_audit" does not exist
+LINE 1: SELECT 1 FROM order_state_audit LIMIT 1;
+                      ^
+
+=== P11 order line taxes (src/lib/orders/quote-conversion.server.ts) ===
+psql:/tmp/p.sql:47: ERROR:  relation "order_line_taxes" does not exist
+LINE 1: SELECT 1 FROM order_line_taxes LIMIT 1;
+                      ^
+
+=== CONTROL: tables the production schema DOES create ===
+ ?column? 
+----------
+(0 rows)
+
+ ?column? 
+----------
+(0 rows)
+
+ ?column? 
+----------
+(0 rows)
+

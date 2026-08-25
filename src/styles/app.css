@@ -106,9 +106,57 @@
   --accent: var(--color-sand);
   --accent-foreground: var(--color-navy);
   --destructive: #c2410c;
+  --destructive-foreground: #fff;
+  --destructive-surface: #ffedd5;
+  --destructive-surface-foreground: #9a3412;
+  --destructive-border: #fdba74;
   --border: var(--color-line);
   --input: var(--color-line);
-  --ring: var(--color-baltic);
+  --focus-ring: var(--color-blue);
+  --focus-halo: rgb(6 156 255 / 0.16);
+  --ring: var(--focus-ring);
+
+  /* Authenticated app navigation */
+  --sidebar: var(--color-navy);
+  --sidebar-foreground: #fff;
+  --sidebar-muted-foreground: #b3c0c9;
+  --sidebar-accent: var(--color-sand);
+  --sidebar-accent-foreground: var(--color-navy);
+  --sidebar-border: rgb(255 255 255 / 0.16);
+  --sidebar-ring: var(--color-sand);
+
+  /* Dense data surfaces */
+  --table-header: var(--color-paper);
+  --table-row-hover: #f7fbfe;
+  --table-row-selected: #edf7ff;
+  --table-row-selected-foreground: var(--color-ink);
+  --table-divider: var(--color-line);
+
+  /* Domain states. Text and shape/icon must accompany status color. */
+  --status-neutral: #eef2f4;
+  --status-neutral-foreground: #40586b;
+  --status-neutral-border: #cbd5dc;
+  --status-info: #e6f4ff;
+  --status-info-foreground: var(--color-blue);
+  --status-info-border: #9ed8ff;
+  --success: #dcfce7;
+  --success-foreground: #166534;
+  --success-border: #86efac;
+  --warning: #fef3c7;
+  --warning-foreground: #713f12;
+  --warning-border: #f5cf69;
+
+  /* Categorical chart marks require text/shape redundancy in consumers. */
+  --chart-1: var(--color-blue);
+  --chart-2: #166534;
+  --chart-3: #9a3412;
+  --chart-4: #6d28d9;
+  --chart-5: #a16207;
+  --chart-6: #40586b;
+  --chart-grid: var(--color-line);
+  --chart-axis: #40586b;
+  --chart-tooltip: #fff;
+  --chart-tooltip-foreground: var(--color-ink);
   --radius: 0.75rem;
 }
 
@@ -126,9 +174,50 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive-surface: var(--destructive-surface);
+  --color-destructive-surface-foreground: var(--destructive-surface-foreground);
+  --color-destructive-border: var(--destructive-border);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-focus-ring: var(--focus-ring);
+  --color-focus-halo: var(--focus-halo);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted-foreground: var(--sidebar-muted-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-table-header: var(--table-header);
+  --color-table-row-hover: var(--table-row-hover);
+  --color-table-row-selected: var(--table-row-selected);
+  --color-table-row-selected-foreground: var(--table-row-selected-foreground);
+  --color-table-divider: var(--table-divider);
+  --color-status-neutral: var(--status-neutral);
+  --color-status-neutral-foreground: var(--status-neutral-foreground);
+  --color-status-neutral-border: var(--status-neutral-border);
+  --color-status-info: var(--status-info);
+  --color-status-info-foreground: var(--status-info-foreground);
+  --color-status-info-border: var(--status-info-border);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-border: var(--success-border);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-warning-border: var(--warning-border);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
+  --color-chart-tooltip: var(--chart-tooltip);
+  --color-chart-tooltip-foreground: var(--chart-tooltip-foreground);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -204,7 +293,7 @@ p {
 
 /* Keep the brand focus ring consistent and visible for keyboard users */
 :focus-visible {
-  outline: 2px solid var(--color-baltic);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
