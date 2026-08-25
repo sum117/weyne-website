@@ -1,5 +1,5 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { readFileSync, readdirSync } from 'node:fs'
+import { relative, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const css = readFileSync(resolve(process.cwd(), 'src/styles/app.css'), 'utf8')
@@ -137,5 +137,27 @@ describe('app semantic color tokens', () => {
     expect(contrast(resolveToken('--focus-ring'), resolveToken('--card'))).toBeGreaterThanOrEqual(3)
     expect(contrast(resolveToken('--focus-ring'), resolveToken('--color-paper'))).toBeGreaterThanOrEqual(3)
     expect(contrast(resolveToken('--color-baltic'), resolveToken('--card'))).toBeLessThan(3)
+  })
+
+  it('keeps white-on-hover surfaces at AA contrast', () => {
+    expect(contrast('#ffffff', resolveToken('--color-navy'))).toBeGreaterThanOrEqual(4.5)
+    expect(contrast('#ffffff', resolveToken('--color-baltic'))).toBeLessThan(4.5)
+  })
+
+  it('leaves no hover:bg-baltic hover state anywhere in src/', () => {
+    const offenders: string[] = []
+    const visit = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = resolve(dir, entry.name)
+        if (entry.isDirectory()) {
+          visit(path)
+        } else if (/\.(tsx?|css)$/.test(entry.name) && readFileSync(path, 'utf8').includes('hover:bg-baltic')) {
+          offenders.push(relative(process.cwd(), path))
+        }
+      }
+    }
+    visit(resolve(process.cwd(), 'src'))
+
+    expect(offenders, `hover:bg-baltic fails AA for white text (3.34:1); found in: ${offenders.join(', ')}`).toEqual([])
   })
 })

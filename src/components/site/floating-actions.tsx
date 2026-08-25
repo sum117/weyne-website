@@ -60,7 +60,7 @@ export function FloatingActions() {
         href={fabHref}
         aria-label={floating.whatsappLabel}
         className={cn(
-          'relative grid size-14.5 place-items-center rounded-full bg-blue text-white shadow-[0_20px_42px_-16px_rgb(3_79_131/0.75)] transition duration-300 ease-house hover:-translate-y-0.5 hover:bg-baltic focus-visible:ring-2 focus-visible:ring-baltic focus-visible:ring-offset-2 focus-visible:ring-offset-paper focus-visible:outline-hidden',
+          'relative grid size-14.5 place-items-center rounded-full bg-blue text-white shadow-[0_20px_42px_-16px_rgb(3_79_131/0.75)] transition duration-300 ease-house hover:-translate-y-0.5 hover:bg-navy focus-visible:ring-2 focus-visible:ring-baltic focus-visible:ring-offset-2 focus-visible:ring-offset-paper focus-visible:outline-hidden',
           hideFab
             ? 'pointer-events-none translate-y-3.5 scale-86 opacity-0'
             : 'pointer-events-auto opacity-100',

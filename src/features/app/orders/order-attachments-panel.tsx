@@ -495,7 +495,7 @@ export function OrderAttachmentsPanel({
 function buttonShellClassName(disabled: boolean): string {
   return [
     'inline-flex min-h-11 items-center gap-2 rounded-full px-6 text-[15px] font-semibold',
-    'bg-blue text-white shadow-xs hover:bg-baltic focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+    'bg-blue text-white shadow-xs hover:bg-navy focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
     disabled ? 'pointer-events-none opacity-60' : '',
   ].join(' ')
 }
